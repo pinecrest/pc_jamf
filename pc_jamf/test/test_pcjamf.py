@@ -223,3 +223,49 @@ def test_strip_extra_location_information(js_authenticated):
     assert 'streetAddress1' not in building_stripped
 
     # Cleanup - none
+
+def test_get_departments(js_authenticated):
+    # Setup - none
+
+    # Exercise
+    departments = js_authenticated.get_departments()
+
+    # Verify
+    assert len(departments) > 1
+
+    # Cleanup - none
+
+def test_get_department(js_authenticated):
+    # Setup
+    department_name = '***REMOVED***'
+    desired_id = 25
+
+    # Exercise
+    department = js_authenticated.get_department(department_name)
+
+    # Verify
+    assert department['id'] == desired_id
+    assert department['name'] == department_name
+
+def test_get_sites(js_authenticated):
+    # Setup - none
+
+    # Exercise
+    sites = js_authenticated.get_sites()
+
+    # Verify
+    assert len(sites) > 1
+
+    # Cleanup - none
+
+def test_get_site(js_authenticated):
+    # Setup
+    site_name = '***REMOVED***'
+    desired_id = 5
+
+    # Exercise
+    site = js_authenticated.get_site(site_name)
+
+    # Verify
+    assert site['id'] == desired_id
+    assert site['name'] == site_name

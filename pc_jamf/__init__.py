@@ -263,24 +263,33 @@ class PCJAMF:
         return self.update_device(device_id, location={'room': room_name})
 
     def get_buildings(self) -> dict:
-        r = self.session.get(self._url('v1/buildings/'))
-        if not r.raise_for_status():
-            return r.json()['results']
+        return self.get_object_list('v1/buildings/')['results']
 
     def get_building(self, building_name: str):
-        for building in self.get_buildings():
-            if building['name'].lower() == building_name.lower():
-                return building
+        buildings = self.get_buildings()
+        return self.get_object_by_name(buildings, building_name)
 
     def get_departments(self) -> dict:
-        r = self.session.get(self._url('v1/departments/'))
-        if not r.raise_for_status():
-            return r.json()
+        return self.get_object_list('v1/departments/')
 
     def get_department(self, department_name: str) -> dict:
-        for department in self.get_departments():
-            if department['name'].lower() == department_name.lower():
-                return department
+        departments = self.get_departments()
+        return self.get_object_by_name(departments, department_name)
     
     def strip_extra_location_information(self, location: dict) -> dict:
         return {'id': location['id'], 'name': location['name']}
+
+    def get_sites(self) -> dict:
+        return self.get_object_list('settings/sites')
+
+    def get_site(self, site_name: str) -> dict:
+        sites = self.get_sites()
+        return self.get_object_by_name(sites, site_name)
+
+    def get_object_list(self, path: str) -> list:
+        r = self.session.get(self._url(path))
+        if not r.raise_for_status():
+            return r.json()
+
+    def get_object_by_name(self, object_list, name) -> dict:
+        return next((item for item in object_list if item["name"] == name), None)
