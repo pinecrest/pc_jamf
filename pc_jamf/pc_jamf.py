@@ -40,19 +40,20 @@ class PCJAMF:
 
     """
 
-    jamf_server = "***REMOVED***"
     jamf_api_root = "/uapi/"
-    jamf_url = urljoin(jamf_server, jamf_api_root)
 
     @classmethod
     def available(
         cls,
-        server: str = None,
+        server: str,
         path: str = "v1/jamf-pro-server-url",
         verify: Union[str, bool] = True,
     ) -> bool:
-        if server:
-            cls.jamf_server = server
+        """
+        checks to see if the provided jamf server is accessible
+        """
+
+        cls.jamf_url = urljoin(server, cls.jamf_api_root)
         url = urljoin(cls.jamf_url, path)
         response = requests.get(url, verify=verify)
         print(f"{url}: {response.status_code}")
@@ -74,6 +75,9 @@ class PCJAMF:
         self.classic_session.headers.update({"Accept": "application/xml"})
 
     def authenticate(self):
+        """
+        Connect to the JAMF server, authenticate using existing credentials, and get an API token
+        """
         r = self.session.post(self._url(AUTH_ENDPOINT))
         if not r.ok:
             raise Exception(f"Invalid status code found. ({r.status_code})")
@@ -85,6 +89,9 @@ class PCJAMF:
 
     @property
     def authenticated(self):
+        """
+        Indicates if the server object is currently authenticated
+        """
         return self.token and self.auth_expiration > datetime.now()
 
     def _url(self, endpoint):
@@ -251,3 +258,9 @@ class PCJAMF:
             return r.status_code == 200
         else:
             raise Exception("Nothing to update")
+
+    def set_device_room(self, device_id: int, room_name: str) -> dict:
+        """
+        Method to retrieve a room location from JAMF
+        """
+        return self.update_device(device_id, location={'room': room_name})
