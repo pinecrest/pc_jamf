@@ -1,0 +1,9 @@
+Pipfile.lock
+.vscode/
+__pycache__/
+config.txt
+PIne Crest School JSS Built-in Certificate Authority.cer
+b-jss1.pinecrest.edu.cer
+client_secret.json
+sheets.googleapis.com-python.json
+.ipynb_checkpoints/

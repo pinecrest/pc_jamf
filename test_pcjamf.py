@@ -1,0 +1,160 @@
+from pc_jamf import PCJAMF
+import configparser
+import pytest
+import datetime
+from pprint import pprint
+import os.path
+import time
+
+config = configparser.ConfigParser()
+config.read("config.txt")
+username = config["credentials"].get("username", None).replace("@pinecrest.edu", "")
+password = config["credentials"].get("password", None)
+
+def test_available():
+    assert PCJAMF.available()
+
+
+@pytest.fixture(scope="session")
+def jamf_session():
+    if PCJAMF.available():
+        jamf = PCJAMF(username, password)
+        yield jamf
+    else:
+        raise Exception(
+            "PC JAMF Server not available. Check your connection and try again."
+        )
+
+
+@pytest.fixture(scope="session")
+def js_authenticated(jamf_session):
+    if not jamf_session.authenticated:
+        jamf_session.authenticate()
+    return jamf_session
+
+
+def test_authenticated():
+    jamf_session = PCJAMF(username, password)
+    assert not jamf_session.authenticated
+    jamf_session.authenticate()
+    assert jamf_session.authenticated
+    token, auth_exp_holding = jamf_session.token, jamf_session.auth_expiration
+    jamf_session.auth_expiration = datetime.datetime.now() - datetime.timedelta(hours=1)
+    assert not jamf_session.authenticated
+    jamf_session.auth_expiration = auth_exp_holding
+    jamf_session.token = None
+    assert not jamf_session.authenticated
+    auth_exp_holding = jamf_session.auth_expiration
+    assert not jamf_session.authenticated
+    jamf_session.token, jamf_session.auth_expiration = token, auth_exp_holding
+    assert jamf_session.authenticate
+
+
+def test_validate_token(js_authenticated):
+    assert js_authenticated.validate()
+
+
+def test_login(jamf_session):
+    jamf_session.authenticate()
+    assert jamf_session.authenticated
+
+
+def test_all_devices(js_authenticated):
+    devices = js_authenticated.all_devices()
+    pprint(devices)
+    assert len(devices) > 0
+
+
+def test_search_devices_by_serial(js_authenticated):
+    serial = "***REMOVED***"
+    devices = js_authenticated.search_devices(serial=serial)
+    assert len(devices) > 0
+    with pytest.raises(Exception):
+        serial = "invalid serial number"
+        assert js_authenticated.get_devices_by_serial(serial)
+
+
+def test_search_devices_by_uuid(js_authenticated):
+    udid = "***REMOVED***"
+    devices = js_authenticated.search_devices(udid=udid)
+    assert len(devices) > 0
+    with pytest.raises(Exception):
+        udid = "null"
+        assert js_authenticated.search_devices(udid=udid)
+
+
+def test_get_device(js_authenticated):
+    device_id = 784
+    device = js_authenticated.device(device_id=device_id)
+    assert device["id"] == 784
+    assert device.items()
+
+
+def test_update_device_name(js_authenticated):
+    # Setup
+    device_id = 779
+    device_test_name = "fi-cart3-test"
+    device_original_name = js_authenticated.device(device_id=device_id)["name"]
+
+    # Exercise
+    updated_device = js_authenticated.update_device_name(
+        device_id=device_id, name=device_test_name
+    )
+    updated_device = js_authenticated.device(device_id)
+
+    # Verify
+    assert updated_device["name"] == device_test_name
+
+    # Cleanup
+    time.sleep(20)
+    updated_device = js_authenticated.update_device_name(
+        device_id=device_id, name=device_original_name
+    )
+    updated_device = js_authenticated.device(device_id)
+    assert updated_device["name"] == device_original_name
+
+
+def test_device_flattened(js_authenticated):
+    device_id = 779
+    device_room_name = "Returned - Boca EdTech"
+    device = js_authenticated.device_flattened(device_id=device_id)
+    assert "lastInventoryUpdateTimestamp" in device
+    assert device["location_room"] == device_room_name
+
+
+def test_token_invalidation():
+    # Setup - create a one-off jamf session
+    test_session = PCJAMF(username, password)
+    test_session.authenticate()
+
+    # Exercise
+    assert test_session.authenticated
+    assert test_session.invalidate()
+
+    # Verify
+    with pytest.raises(AttributeError):
+        assert test_session.token
+        assert test_session.auth_expiration
+    assert not test_session.validate()
+
+    # Cleanup - none
+
+
+def test_update_device(js_authenticated):
+    # Setup
+    device_id = 779
+    device = js_authenticated.device(device_id=device_id, detail=True)
+    print(device)
+    old_device_asset_tag = device["assetTag"]
+    device_asset_tag_test = f"{old_device_asset_tag}-test"
+
+    # Exercise
+    js_authenticated.update_device(device_id, assetTag=device_asset_tag_test)
+    device = js_authenticated.device(device_id, detail=True)
+
+    # Verify
+    assert device["assetTag"] == device_asset_tag_test
+
+    # Cleanup
+    js_authenticated.update_device(device_id, assetTag=old_device_asset_tag)
+
