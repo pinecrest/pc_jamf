@@ -277,7 +277,10 @@ class PCJAMF:
         if not r.raise_for_status():
             return r.json()
 
-    def get_department(self, department_name: str):
+    def get_department(self, department_name: str) -> dict:
         for department in self.get_departments():
             if department['name'].lower() == department_name.lower():
                 return department
+    
+    def strip_extra_location_information(self, location: dict) -> dict:
+        return {'id': location['id'], 'name': location['name']}

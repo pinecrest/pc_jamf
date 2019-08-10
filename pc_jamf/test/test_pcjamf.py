@@ -207,3 +207,19 @@ def test_get_department(js_authenticated):
     # Verify
     assert department['id'] == desired_id
     assert department['name'] == department_name
+
+def test_strip_extra_location_information(js_authenticated):
+    # Setup
+    building_name = '***REMOVED***'
+    desired_id = 4
+
+    # Exercise
+    building = js_authenticated.get_building(building_name)
+    building_stripped = js_authenticated.strip_extra_location_information(building)
+
+    # Verify
+    assert building_stripped['id'] == desired_id
+    assert building_stripped['name'] == building_name
+    assert 'streetAddress1' not in building_stripped
+
+    # Cleanup - none
