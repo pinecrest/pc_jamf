@@ -9,7 +9,6 @@ setup(name='pc_jamf',
       license='MIT',
       packages=['pc_jamf'],
       install_requires=[
-            'requests',
-            
+            'requests'
       ]
       zip_safe=False)
