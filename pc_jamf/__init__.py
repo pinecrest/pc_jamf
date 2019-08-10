@@ -115,7 +115,6 @@ class PCJAMF:
 
         r = self.session.post(url=self._url(SEARCH_DEVICE_ENDPOINT), json=search_params)
         payload = r.json()
-        print(payload)
         if payload["totalCount"] > 0:
             return payload["results"]
         else:
@@ -262,3 +261,23 @@ class PCJAMF:
         Method to retrieve a room location from JAMF
         """
         return self.update_device(device_id, location={'room': room_name})
+
+    def get_buildings(self) -> dict:
+        r = self.session.get(self._url('v1/buildings/'))
+        if not r.raise_for_status():
+            return r.json()['results']
+
+    def get_building(self, building_name: str):
+        for building in self.get_buildings():
+            if building['name'].lower() == building_name.lower():
+                return building
+
+    def get_departments(self) -> dict:
+        r = self.session.get(self._url('v1/departments/'))
+        if not r.raise_for_status():
+            return r.json()
+
+    def get_department(self, department_name: str):
+        for department in self.get_departments():
+            if department['name'].lower() == department_name.lower():
+                return department

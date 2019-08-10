@@ -160,3 +160,50 @@ def test_update_device(js_authenticated):
     # Cleanup
     js_authenticated.update_device(device_id, assetTag=old_device_asset_tag)
 
+def test_get_buildings(js_authenticated):
+    # Setup - none
+
+    # Exercise
+    buildings = js_authenticated.get_buildings()
+
+    # Verify
+    assert len(buildings) > 1
+
+    # Cleanup - none
+
+def test_get_building(js_authenticated):
+    # Setup
+    building_name = '***REMOVED***'
+    desired_id = 4
+
+    # Exercise
+    building = js_authenticated.get_building(building_name)
+
+    # Verify
+    assert building['id'] == desired_id
+    assert building['name'] == building_name
+
+    # Cleanup - none
+
+def test_get_departments(js_authenticated):
+    # Setup - none
+
+    # Exercise
+    departments = js_authenticated.get_departments()
+
+    # Verify
+    assert len(departments) > 1
+
+    # Cleanup - none
+
+def test_get_department(js_authenticated):
+    # Setup
+    department_name = '***REMOVED***'
+    desired_id = 25
+
+    # Exercise
+    department = js_authenticated.get_department(department_name)
+
+    # Verify
+    assert department['id'] == desired_id
+    assert department['name'] == department_name
