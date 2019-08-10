@@ -265,16 +265,23 @@ class PCJAMF:
     def get_buildings(self) -> dict:
         return self.get_object_list('v1/buildings/')['results']
 
-    def get_building(self, building_name: str):
+    def get_building(self, building_name: str, strip_extra: bool=False):
         buildings = self.get_buildings()
-        return self.get_object_by_name(buildings, building_name)
+        building = self.get_object_by_name(buildings, building_name)
+        if strip_extra:
+            building = self.strip_extra_location_information(building)
+        return building
+
 
     def get_departments(self) -> dict:
         return self.get_object_list('v1/departments/')
 
-    def get_department(self, department_name: str) -> dict:
+    def get_department(self, department_name: str, strip_extra: bool=True) -> dict:
         departments = self.get_departments()
-        return self.get_object_by_name(departments, department_name)
+        department = self.get_object_by_name(departments, department_name)
+        if strip_extra:
+            department = self.strip_extra_location_information(department)
+        return department
     
     def strip_extra_location_information(self, location: dict) -> dict:
         return {'id': location['id'], 'name': location['name']}
@@ -282,9 +289,12 @@ class PCJAMF:
     def get_sites(self) -> dict:
         return self.get_object_list('settings/sites')
 
-    def get_site(self, site_name: str) -> dict:
+    def get_site(self, site_name: str, strip_extra: bool=False) -> dict:
         sites = self.get_sites()
-        return self.get_object_by_name(sites, site_name)
+        site = self.get_object_by_name(sites, site_name)
+        if strip_extra:
+            site = self.strip_extra_location_information(site)
+        return site
 
     def get_object_list(self, path: str) -> list:
         r = self.session.get(self._url(path))
