@@ -8,4 +8,8 @@ setup(name='pc_jamf',
       author_email='sean.tibor@pinecrest.edu',
       license='MIT',
       packages=['pc_jamf'],
+      install_requires=[
+            'requests',
+            
+      ]
       zip_safe=False)

@@ -2,7 +2,6 @@ import requests
 import time
 from urllib.parse import urljoin
 from datetime import datetime, timezone
-from pprint import pprint
 import json
 import pathlib
 from typing import Union
@@ -59,10 +58,9 @@ class PCJAMF:
         print(f"{url}: {response.status_code}")
         return response.ok or response.status_code == 401
 
-    def __init__(self, username: str, password: str, server: str=None, verify: Union[str, bool]=True):
-        if server:
-            self.jamf_server = server
-            self.jamf_url = urljoin(self.jamf_server, self.jamf_api_root)
+    def __init__(self, username: str, password: str, server: str, verify: Union[str, bool]=True):
+        self.jamf_server = server
+        self.jamf_url = urljoin(self.jamf_server, self.jamf_api_root)
         self.session = requests.Session()
         self.session.verify = verify
         self.session.auth = (username, password)

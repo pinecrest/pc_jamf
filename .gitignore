@@ -7,6 +7,7 @@ b-jss1.pinecrest.edu.cer
 client_secret.json
 sheets.googleapis.com-python.json
 .ipynb_checkpoints/
+.env
 
 # Compiled python modules.
 *.pyc

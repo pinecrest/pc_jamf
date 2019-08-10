@@ -10,15 +10,16 @@ config = configparser.ConfigParser()
 config.read("config.txt")
 username = config["credentials"].get("username", None).replace("@pinecrest.edu", "")
 password = config["credentials"].get("password", None)
+server = config["parameters"].get("server_name", None)
 
 def test_available():
-    assert PCJAMF.available()
+    assert PCJAMF.available(server=server)
 
 
 @pytest.fixture(scope="session")
 def jamf_session():
-    if PCJAMF.available():
-        jamf = PCJAMF(username, password)
+    if PCJAMF.available(server=server):
+        jamf = PCJAMF(username, password, server=server)
         yield jamf
     else:
         raise Exception(
@@ -34,7 +35,7 @@ def js_authenticated(jamf_session):
 
 
 def test_authenticated():
-    jamf_session = PCJAMF(username, password)
+    jamf_session = PCJAMF(username, password, server)
     assert not jamf_session.authenticated
     jamf_session.authenticate()
     assert jamf_session.authenticated
@@ -100,6 +101,7 @@ def test_update_device_name(js_authenticated):
     updated_device = js_authenticated.update_device_name(
         device_id=device_id, name=device_test_name
     )
+    time.sleep(20) # allow time for the command to execute
     updated_device = js_authenticated.device(device_id)
 
     # Verify
@@ -124,7 +126,7 @@ def test_device_flattened(js_authenticated):
 
 def test_token_invalidation():
     # Setup - create a one-off jamf session
-    test_session = PCJAMF(username, password)
+    test_session = PCJAMF(username, password, server)
     test_session.authenticate()
 
     # Exercise
