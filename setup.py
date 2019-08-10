@@ -10,5 +10,5 @@ setup(name='pc_jamf',
       packages=['pc_jamf'],
       install_requires=[
             'requests'
-      ]
+      ],
       zip_safe=False)
