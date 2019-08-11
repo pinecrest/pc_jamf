@@ -127,7 +127,8 @@ class PCJAMF:
         if detail:
             url += "/detail"
         r = self.session.get(url)
-        return r.json()
+        if r.status_code == 200:
+            return r.json()
 
 
     def update_device_name(self, device_id, name):

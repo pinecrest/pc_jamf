@@ -101,24 +101,21 @@ def test_update_device_name(js_authenticated):
     updated_device = js_authenticated.update_device_name(
         device_id=device_id, name=device_test_name
     )
-    time.sleep(20) # allow time for the command to execute
-    updated_device = js_authenticated.device(device_id)
 
     # Verify
-    assert updated_device["name"] == device_test_name
+    assert '<status>Command sent</status>' in updated_device
 
     # Cleanup
     time.sleep(20)
     updated_device = js_authenticated.update_device_name(
         device_id=device_id, name=device_original_name
     )
-    updated_device = js_authenticated.device(device_id)
-    assert updated_device["name"] == device_original_name
+    assert '<status>Command sent</status>' in updated_device
 
 
 def test_device_flattened(js_authenticated):
     device_id = 779
-    device_room_name = "Returned - Boca EdTech"
+    device_room_name = "Findeiss 1"
     device = js_authenticated.device_flattened(device_id=device_id)
     assert "lastInventoryUpdateTimestamp" in device
     assert device["location_room"] == device_room_name
