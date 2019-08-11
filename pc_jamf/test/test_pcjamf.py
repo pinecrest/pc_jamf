@@ -85,9 +85,9 @@ def test_search_devices_by_uuid(js_authenticated):
 
 
 def test_get_device(js_authenticated):
-    device_id = 784
+    device_id = 779
     device = js_authenticated.device(device_id=device_id)
-    assert device["id"] == 784
+    assert device["id"] == 779
     assert device.items()
 
 
