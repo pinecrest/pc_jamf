@@ -185,6 +185,18 @@ def test_get_building(js_authenticated):
 
     # Cleanup - none
 
+def test_get_empty_building(js_authenticated):
+    # Setup
+    building_name = None
+
+    # Exercise
+    building = js_authenticated.get_building(building_name)
+
+    # Verify
+    assert not building
+
+    # Cleanup - none
+
 def test_get_departments(js_authenticated):
     # Setup - none
 
@@ -208,6 +220,18 @@ def test_get_department(js_authenticated):
     assert department['id'] == desired_id
     assert department['name'] == department_name
 
+def test_get_empty_department(js_authenticated):
+    # Setup
+    department_name = None
+
+    # Exercise
+    department = js_authenticated.get_department(department_name)
+
+    # Verify
+    assert not department
+
+    # Cleanup - none
+
 def test_strip_extra_location_information(js_authenticated):
     # Setup
     building_name = '***REMOVED***'
@@ -221,6 +245,19 @@ def test_strip_extra_location_information(js_authenticated):
     assert building_stripped['id'] == desired_id
     assert building_stripped['name'] == building_name
     assert 'streetAddress1' not in building_stripped
+
+    # Cleanup - none
+
+def test_strip_empty_extra_location_information(js_authenticated):
+    # Setup
+    building_name = None
+
+    # Exercise
+    building = js_authenticated.get_building(building_name)
+    building_stripped = js_authenticated.strip_extra_location_information(building)
+
+    # Verify
+    assert building_stripped is None
 
     # Cleanup - none
 

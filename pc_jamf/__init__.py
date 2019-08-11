@@ -283,8 +283,10 @@ class PCJAMF:
             department = self.strip_extra_location_information(department)
         return department
     
-    def strip_extra_location_information(self, location: dict) -> dict:
-        return {'id': location['id'], 'name': location['name']}
+    @staticmethod
+    def strip_extra_location_information(location: dict) -> dict:
+        if location:
+            return {'id': location['id'], 'name': location['name']}
 
     def get_sites(self) -> dict:
         return self.get_object_list('settings/sites')
