@@ -148,7 +148,7 @@ def test_update_device(js_authenticated):
     device_asset_tag_test = f"{old_device_asset_tag}-test"
 
     # Exercise
-    js_authenticated.update_device(device_id, assetTag=device_asset_tag_test)
+    assert js_authenticated.update_device(device_id, assetTag=device_asset_tag_test)
     device = js_authenticated.device(device_id, detail=True)
 
     # Verify
