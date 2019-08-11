@@ -283,3 +283,16 @@ def test_get_site(js_authenticated):
     # Verify
     assert site['id'] == desired_id
     assert site['name'] == site_name
+
+    # Cleanup - none
+
+def test_update_inventory(js_authenticated):
+    # Setup
+    device_id = 779
+    desired_success = '<status>Command sent</status>'
+
+    # Exercise
+    response = js_authenticated.update_inventory(device_id)
+
+    # Verify
+    assert desired_success in response

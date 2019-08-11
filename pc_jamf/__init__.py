@@ -142,6 +142,17 @@ class PCJAMF:
 
         return cr.text
 
+    def update_inventory(self, device_id: int) -> str:
+        url = self._url(f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/UpdateInventory/id/{device_id}")
+        cr = self.classic_session.post(url=url)
+        if cr.status_code != 201:
+            print(url)
+            print(cr.text)
+            print(cr.status_code)
+            raise Exception('Unable to push device name command')
+
+        return cr.text
+
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
         print(f'deleting device {device_id}')
