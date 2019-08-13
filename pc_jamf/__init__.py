@@ -214,6 +214,8 @@ class PCJAMF:
         return r.status_code == 200
 
     def invalidate(self):
+        if not self.authenticated:
+            return True
         r = self.session.post(self._url(INVALIDATE_ENDPOINT))
         if r.ok:
             del self.session.headers["Accept"]
