@@ -72,6 +72,12 @@ class PCJAMF:
         self.classic_session.auth = HTTPBasicAuth(username, password)
         self.classic_session.headers.update({"Accept": "application/xml"})
 
+    def __del__(self):
+        if self.authenticated:
+            self.invalidate()
+            self.session.close()
+            self.classic_session.close()
+
     def authenticate(self):
         """
         Connect to the JAMF server, authenticate using existing credentials, and get an API token
