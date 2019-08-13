@@ -80,7 +80,6 @@ class PCJAMF:
         if not r.ok:
             raise Exception(f"Invalid status code found. ({r.status_code})")
         auth_data = r.json()
-        self.session.auth = None
         self.token = auth_data["token"]
         self.auth_expiration = datetime.fromtimestamp(auth_data["expires"] / 1000)
         self.session.headers.update({"Authorization": f"Bearer {self.token}"})
@@ -248,7 +247,6 @@ class PCJAMF:
         else:
             return True
         return self.update_configuration_profile(root)
-        
 
     def get_configuration_profile(self, configuration_profile_id: int) -> ET.ElementTree:
         r = self.classic_session.get(f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/{configuration_profile_id}")
