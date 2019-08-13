@@ -63,7 +63,7 @@ class PCJAMF:
         self.jamf_url = urljoin(self.jamf_server, self.jamf_api_root)
         self.session = requests.Session()
         self.session.verify = verify
-        self.session.auth = (username, password)
+        self.credentials = (username, password)
         self.session.headers.update({"Accept": "application/json"})
         self.token = None
         self.auth_expiration = None
@@ -76,12 +76,14 @@ class PCJAMF:
         """
         Connect to the JAMF server, authenticate using existing credentials, and get an API token
         """
+        self.session.auth = self.credentials
         r = self.session.post(self._url(AUTH_ENDPOINT))
         if not r.ok:
             raise Exception(f"Invalid status code found. ({r.status_code})")
         auth_data = r.json()
         self.token = auth_data["token"]
         self.auth_expiration = datetime.fromtimestamp(auth_data["expires"] / 1000)
+        self.session.auth = None
         self.session.headers.update({"Authorization": f"Bearer {self.token}"})
 
     @property

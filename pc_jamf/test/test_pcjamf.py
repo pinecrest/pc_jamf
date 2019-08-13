@@ -48,7 +48,7 @@ def test_authenticated():
     auth_exp_holding = jamf_session.auth_expiration
     assert not jamf_session.authenticated
     jamf_session.token, jamf_session.auth_expiration = token, auth_exp_holding
-    assert jamf_session.authenticate
+    assert jamf_session.authenticated
 
 
 def test_validate_token(js_authenticated):
