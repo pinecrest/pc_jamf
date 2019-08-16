@@ -325,3 +325,15 @@ class PCJAMF:
 
     def get_object_by_name(self, object_list, name) -> dict:
         return next((item for item in object_list if item["name"] == name), None)
+
+    def flush_mobile_device_commands(self, device_id, status=None):
+
+        if not status:
+            status = "Pending+Failed"
+
+        if status not in ("Pending", "Failed", "Pending+Failed"):
+            raise Exception("Invalid Status: {status}")
+
+        url = self._url(html.escape(f'{CLASSIC_ENDPOINT}/commandflush/mobiledevices/id/{device_id}/status/{status}'))
+
+        return self.classic_session.get(url, headers={'accept': 'application/json'}).ok

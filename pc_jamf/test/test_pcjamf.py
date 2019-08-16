@@ -293,3 +293,15 @@ def test_update_inventory(js_authenticated):
 
     # Verify
     assert desired_success in response
+
+def test_flush_mobile_device_commands(js_authenticated):
+    # Setup
+    device_id = 779
+
+    # Exercise
+    response = js_authenticated.flush_mobile_device_commands(device_id, "Failed")
+
+    # Verify
+    assert response
+
+    # Cleanup - none
