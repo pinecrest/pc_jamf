@@ -336,4 +336,4 @@ class PCJAMF:
 
         url = self._url(html.escape(f'{CLASSIC_ENDPOINT}/commandflush/mobiledevices/id/{device_id}/status/{status}'))
 
-        return self.classic_session.get(url, headers={'accept': 'application/json'}).ok
+        return self.classic_session.delete(url, headers={'accept': 'application/json'}).ok
