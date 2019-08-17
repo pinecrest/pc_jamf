@@ -15,7 +15,9 @@ SEARCH_DEVICE_ENDPOINT = "inventory/searchMobileDevices"
 VALIDATION_ENDPOINT = "auth/current"
 INVALIDATE_ENDPOINT = "auth/invalidateToken"
 CLASSIC_ENDPOINT = "/JSSResource"
-CLASSIC_DEVICENAME_ENDPOINT = f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/DeviceName"
+CLASSIC_DEVICENAME_ENDPOINT = (
+    f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/DeviceName"
+)
 DEVICE_RENAMING_RESTRICTION_PROFILE_ID = 127
 
 
@@ -58,7 +60,9 @@ class PCJAMF:
         print(f"{url}: {response.status_code}")
         return response.ok or response.status_code == 401
 
-    def __init__(self, username: str, password: str, server: str, verify: Union[str, bool]=True):
+    def __init__(
+        self, username: str, password: str, server: str, verify: Union[str, bool] = True
+    ):
         self.jamf_server = server
         self.jamf_url = urljoin(self.jamf_server, self.jamf_api_root)
         self.session = requests.Session()
@@ -137,41 +141,41 @@ class PCJAMF:
         if r.status_code == 200:
             return r.json()
 
-
     def update_device_name(self, device_id, name):
 
-        url = self._url(html.escape(f"{CLASSIC_DEVICENAME_ENDPOINT}/{name}/id/{device_id}"))
-        cr = self.classic_session.post(url=url, data='')
+        url = self._url(
+            html.escape(f"{CLASSIC_DEVICENAME_ENDPOINT}/{name}/id/{device_id}")
+        )
+        cr = self.classic_session.post(url=url, data="")
         if cr.status_code != 201:
-            print(url)
-            print(cr.text)
-            print(cr.status_code)
-            raise Exception('Unable to push device name command')
+            return "Unable to push device name command"
 
         return cr.text
 
     def update_inventory(self, device_id: int) -> str:
-        url = self._url(f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/UpdateInventory/id/{device_id}")
+        url = self._url(
+            f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/UpdateInventory/id/{device_id}"
+        )
         cr = self.classic_session.post(url=url)
         if cr.status_code != 201:
             print(url)
             print(cr.text)
             print(cr.status_code)
-            raise Exception('Unable to push device name command')
+            raise Exception("Unable to push device name command")
 
         return cr.text
 
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
-        print(f'deleting device {device_id}')
-        cr = self.classic_session.delete(url=url, data='')
+        print(f"deleting device {device_id}")
+        cr = self.classic_session.delete(url=url, data="")
         if cr.status_code == 200:
             print(f"Device {device_id} successfully deleted.")
             return True
         else:
             print(url)
             print(cr.text)
-            raise Exception('Unable to push device name command')
+            raise Exception("Unable to push device name command")
 
     def device_flattened(self, device_id):
         device = {}
@@ -228,43 +232,60 @@ class PCJAMF:
         if r.ok:
             del self.session.headers["Accept"]
             del self.token
-            del self.auth_expiration 
+            del self.auth_expiration
         return bool(r.ok)
 
-    def change_device_configuration_profile_exclusion(self, device_id: int, configuration_profile_id: int, exclude_device: bool=True) -> bool:
+    def change_device_configuration_profile_exclusion(
+        self, device_id: int, configuration_profile_id: int, exclude_device: bool = True
+    ) -> bool:
         """
         Add or remove a mobile device from a mobile device configuration profile exclusion list
         """
         device = self.device(device_id=device_id)
         root = self.get_configuration_profile(configuration_profile_id)
         excluded_devices = root.findall(".//exclusions/mobile_devices")[0]
-        excluded_ids = [elm.text for elm in excluded_devices.findall("./mobile_device/id")]
+        excluded_ids = [
+            elm.text for elm in excluded_devices.findall("./mobile_device/id")
+        ]
         if exclude_device and device_id not in excluded_ids:
-            device_element = ET.SubElement(excluded_devices, 'mobile_device')
+            device_element = ET.SubElement(excluded_devices, "mobile_device")
             try:
-                ET.SubElement(device_element, 'id').text = str(device_id)
-                ET.SubElement(device_element, 'name').text = device['name']
-                ET.SubElement(device_element, 'udid').text = device['udid']
-                ET.SubElement(device_element, 'wifi_mac_address').text = device['wifiMacAddress']
+                ET.SubElement(device_element, "id").text = str(device_id)
+                ET.SubElement(device_element, "name").text = device["name"]
+                ET.SubElement(device_element, "udid").text = device["udid"]
+                ET.SubElement(device_element, "wifi_mac_address").text = device[
+                    "wifiMacAddress"
+                ]
             except KeyError:
                 raise Exception(f"device was not properly formed. {device}")
         elif not exclude_device:
             try:
-                device_element = excluded_devices.findall(f"./mobile_device/[id='{device_id}']")[0]
-                excluded_devices.remove(device_element) 
+                device_element = excluded_devices.findall(
+                    f"./mobile_device/[id='{device_id}']"
+                )[0]
+                excluded_devices.remove(device_element)
             except IndexError:
-                return True # We don't really care if it's missing from the list
+                return True  # We don't really care if it's missing from the list
         else:
             return True
         return self.update_configuration_profile(root)
 
-    def get_configuration_profile(self, configuration_profile_id: int) -> ET.ElementTree:
-        r = self.classic_session.get(f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/{configuration_profile_id}")
+    def get_configuration_profile(
+        self, configuration_profile_id: int
+    ) -> ET.ElementTree:
+        r = self.classic_session.get(
+            f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/{configuration_profile_id}"
+        )
         return ET.fromstring(r.text)
 
-    def update_configuration_profile(self, configuration_profile: ET.ElementTree) -> bool:
+    def update_configuration_profile(
+        self, configuration_profile: ET.ElementTree
+    ) -> bool:
         configuration_id = configuration_profile.findall("./general/id")[0].text
-        r = self.classic_session.put(f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/{configuration_id}", ET.tostring(configuration_profile))
+        r = self.classic_session.put(
+            f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/{configuration_id}",
+            ET.tostring(configuration_profile),
+        )
         return r.status_code == 201
 
     def update_device(self, device_id, **kwargs):
@@ -280,38 +301,37 @@ class PCJAMF:
         """
         Method to retrieve a room location from JAMF
         """
-        return self.update_device(device_id, location={'room': room_name})
+        return self.update_device(device_id, location={"room": room_name})
 
     def get_buildings(self) -> dict:
-        return self.get_object_list('v1/buildings/')['results']
+        return self.get_object_list("v1/buildings/")["results"]
 
-    def get_building(self, building_name: str, strip_extra: bool=False):
+    def get_building(self, building_name: str, strip_extra: bool = False):
         buildings = self.get_buildings()
         building = self.get_object_by_name(buildings, building_name)
         if strip_extra:
             building = self.strip_extra_location_information(building)
         return building
 
-
     def get_departments(self) -> dict:
-        return self.get_object_list('v1/departments/')
+        return self.get_object_list("v1/departments/")
 
-    def get_department(self, department_name: str, strip_extra: bool=True) -> dict:
+    def get_department(self, department_name: str, strip_extra: bool = True) -> dict:
         departments = self.get_departments()
         department = self.get_object_by_name(departments, department_name)
         if strip_extra:
             department = self.strip_extra_location_information(department)
         return department
-    
+
     @staticmethod
     def strip_extra_location_information(location: dict) -> dict:
         if location:
-            return {'id': location['id'], 'name': location['name']}
+            return {"id": location["id"], "name": location["name"]}
 
     def get_sites(self) -> dict:
-        return self.get_object_list('settings/sites')
+        return self.get_object_list("settings/sites")
 
-    def get_site(self, site_name: str, strip_extra: bool=False) -> dict:
+    def get_site(self, site_name: str, strip_extra: bool = False) -> dict:
         sites = self.get_sites()
         site = self.get_object_by_name(sites, site_name)
         if strip_extra:
@@ -334,6 +354,13 @@ class PCJAMF:
         if status not in ("Pending", "Failed", "Pending+Failed"):
             raise Exception("Invalid Status: {status}")
 
-        url = self._url(html.escape(f'{CLASSIC_ENDPOINT}/commandflush/mobiledevices/id/{device_id}/status/{status}'))
+        url = self._url(
+            html.escape(
+                f"{CLASSIC_ENDPOINT}/commandflush/mobiledevices/id/{device_id}/status/{status}"
+            )
+        )
 
-        return self.classic_session.delete(url, headers={'accept': 'application/json'}).ok
+        return self.classic_session.delete(
+            url, headers={"accept": "application/json"}
+        ).ok
+
