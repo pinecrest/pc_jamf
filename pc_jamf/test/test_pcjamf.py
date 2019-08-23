@@ -118,7 +118,7 @@ def test_device_flattened(js_authenticated):
     device_room_name = "Findeiss 1"
     device = js_authenticated.device_flattened(device_id=device_id)
     assert "lastInventoryUpdateTimestamp" in device
-    assert device["location_room"] == device_room_name
+    assert device.get("location_room") == device_room_name
 
 
 def test_token_invalidation():

@@ -152,6 +152,17 @@ class PCJAMF:
 
         return cr.text
 
+    def wipe_device(self, device_id):
+
+        url = self._url(
+            html.escape(f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/EraseDevice/id/{device_id}")
+        )
+        cr = self.classic_session.post(url=url, data="")
+        if cr.status_code != 201:
+            return "Unable to wipe device"
+
+        return cr.text
+
     def update_inventory(self, device_id: int) -> str:
         url = self._url(
             f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/UpdateInventory/id/{device_id}"
@@ -161,7 +172,7 @@ class PCJAMF:
             print(url)
             print(cr.text)
             print(cr.status_code)
-            raise Exception("Unable to push device name command")
+            raise Exception("Unable to push device update inventory")
 
         return cr.text
 
@@ -288,14 +299,13 @@ class PCJAMF:
         )
         return r.status_code == 201
 
-    def update_device(self, device_id, **kwargs):
-        if kwargs:
-            r = self.session.post(
-                self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}/update"), json=kwargs
-            )
-            return r.status_code == 200
-        else:
-            raise Exception("Nothing to update")
+    def update_device(self, device_id, payload=None, **kwargs):
+        if not payload:
+            payload = kwargs
+        r = self.session.post(
+            self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}/update"), json=payload
+        )
+        return r.ok
 
     def set_device_room(self, device_id: int, room_name: str) -> dict:
         """
