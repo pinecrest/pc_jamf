@@ -116,7 +116,7 @@ class PCJAMF:
             raise Exception("You must provide at least one search term")
 
         if name:
-            search_params["name"] = name
+            search_params["name"] = name    
         if serial:
             search_params["serialNumber"] = serial
         if udid:
@@ -126,7 +126,7 @@ class PCJAMF:
 
         r = self.session.post(url=self._url(SEARCH_DEVICE_ENDPOINT), json=search_params)
         payload = r.json()
-        if payload["totalCount"] > 0:
+        if payload.get("totalCount", 0) > 0:
             return payload["results"]
         else:
             raise Exception(
