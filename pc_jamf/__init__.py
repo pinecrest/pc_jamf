@@ -10,8 +10,8 @@ import html
 import xml.etree.ElementTree as ET
 
 AUTH_ENDPOINT = "auth/tokens"
-MOBILE_DEVICE_ENDPOINT = "inventory/obj/mobileDevice"
-SEARCH_DEVICE_ENDPOINT = "inventory/searchMobileDevices"
+MOBILE_DEVICE_ENDPOINT = "v1/mobile-devices"
+SEARCH_DEVICE_ENDPOINT = "v1/search-mobile-devices"
 VALIDATION_ENDPOINT = "auth/current"
 INVALIDATE_ENDPOINT = "auth/invalidateToken"
 CLASSIC_ENDPOINT = "/JSSResource"
