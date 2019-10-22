@@ -112,6 +112,19 @@ def test_update_device_name(js_authenticated):
     )
     assert '<status>Command sent</status>' in updated_device
 
+def test_os_update_device(js_authenticated):
+    # Setup
+    device_id = 779
+
+    # Exercise
+    updated_device = js_authenticated.update_os(
+        device_id=device_id, force_install=True)
+
+    # Verify
+    assert '<status>Command sent</status>' in updated_device
+
+    # Cleanup
+    # None
 
 def test_device_flattened(js_authenticated):
     device_id = 779

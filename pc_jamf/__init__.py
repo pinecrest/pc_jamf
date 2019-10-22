@@ -175,6 +175,21 @@ class PCJAMF:
             raise Exception("Unable to push device update inventory")
 
         return cr.text
+    
+    def update_os(self, device_id: int, force_install: bool=True)->str:
+        install_action = 2 if force_install else 1
+
+        url = self._url(
+            f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/ScheduleOSUpdate/{install_action}/id/{device_id}"
+        )
+        cr = self.classic_session.post(url=url)
+        if cr.status_code != 201:
+            print(url)
+            print(cr.text)
+            print(cr.status_code)
+            raise Exception("Unable to push device update inventory")
+
+        return cr.text
 
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
