@@ -187,7 +187,7 @@ class PCJAMF:
             print(url)
             print(cr.text)
             print(cr.status_code)
-            raise Exception("Unable to push device update inventory")
+            raise Exception("Unable to push device OS update")
 
         return cr.text
 
@@ -317,8 +317,8 @@ class PCJAMF:
     def update_device(self, device_id, payload=None, **kwargs):
         if not payload:
             payload = kwargs
-        r = self.session.post(
-            self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}/update"), json=payload
+        r = self.session.patch(
+            self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}"), json=payload
         )
         return r.ok
 

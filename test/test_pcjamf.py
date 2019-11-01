@@ -156,7 +156,6 @@ def test_update_device(js_authenticated):
     # Setup
     device_id = 779
     device = js_authenticated.device(device_id=device_id, detail=True)
-    print(device)
     old_device_asset_tag = device["assetTag"]
     device_asset_tag_test = f"{old_device_asset_tag}-test"
 
