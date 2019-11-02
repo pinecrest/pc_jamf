@@ -331,6 +331,8 @@ class PCJAMF:
         r = self.session.patch(
             self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}"), json=payload
         )
+        if not r.ok:
+            print(f"Error {r.status_code}: {r.text}")
         return r.ok
 
     def set_device_room(self, device_id: int, room_name: str) -> dict:
