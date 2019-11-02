@@ -91,6 +91,9 @@ def test_get_device(js_authenticated):
     assert device["id"] == TEST_DEVICE_ID
     assert device.items()
 
+def test_flush_mobile_device_commands(js_authenticated):
+    assert js_authenticated.flush_mobile_device_commands(TEST_DEVICE_ID)
+
 def test_clear_location_from_device(js_authenticated):
     # Setup
     device_id = TEST_DEVICE_ID
@@ -107,10 +110,56 @@ def test_clear_location_from_device(js_authenticated):
     # Cleanup
     js_authenticated.update_device(device_id, location=old_location)
 
+def test_add_device_to_prestage_by_device_id(js_authenticated):
+    # Setup
+    device_id = TEST_DEVICE_ID
+    serial_number = js_authenticated.device(device_id=device_id)['serialNumber']
+    prestage_endpoint = js_authenticated._url('/uapi/v1/mobile-device-prestages/scope')
+    before_prestage = js_authenticated.session.get(prestage_endpoint).json()['serialsByPrestageId'].get(serial_number)
+    if before_prestage:
+        js_authenticated.remove_device_from_prestage(device_id=device_id, prestage_id=before_prestage)
+    test_prestage = 58
+    
+    # Exercise
+    js_authenticated.add_device_to_prestage(device_id=device_id, prestage_id=test_prestage)
+
+    # Verify
+    prestages = js_authenticated.session.get(prestage_endpoint).json()['serialsByPrestageId']
+    assert prestages[serial_number] == test_prestage
+
+    # Cleanup
+    js_authenticated.remove_device_from_prestage(device_id=device_id, prestage_id=test_prestage)
+    if before_prestage:
+        js_authenticated.add_device_to_prestage(device_id=device_id, prestage_id=before_prestage)
+
+def test_add_device_to_prestage_by_serial(js_authenticated):
+    # Setup
+    device_id = TEST_DEVICE_ID
+    serial_number = js_authenticated.device(device_id=device_id)['serialNumber']
+    prestage_endpoint = js_authenticated._url('/uapi/v1/mobile-device-prestages/scope')
+    before_prestage = js_authenticated.session.get(prestage_endpoint).json()['serialsByPrestageId'].get(serial_number)
+    if before_prestage:
+        js_authenticated.remove_device_from_prestage(serial_number=serial_number, prestage_id=before_prestage)
+    test_prestage = 58
+    
+    # Exercise
+    js_authenticated.add_device_to_prestage(serial_number=serial_number, prestage_id=test_prestage)
+
+    # Verify
+    prestages = js_authenticated.session.get(prestage_endpoint).json()['serialsByPrestageId']
+    assert prestages[serial_number] == test_prestage
+
+    # Cleanup
+    js_authenticated.remove_device_from_prestage(serial_number=serial_number, prestage_id=test_prestage)
+    if before_prestage:
+        js_authenticated.add_device_to_prestage(serial_number=serial_number, prestage_id=before_prestage)
+
 def test_update_device_name(js_authenticated):
     # Setup
     device_test_name = "fi-cart3-test"
     device_original_name = js_authenticated.device(device_id=TEST_DEVICE_ID)["name"]
+    js_authenticated.flush_mobile_device_commands(device_id=TEST_DEVICE_ID)
+    time.sleep(0.25)
 
     # Exercise
     updated_device = js_authenticated.update_device_name(
@@ -143,7 +192,8 @@ def test_os_update_device(js_authenticated):
 
 def test_device_flattened(js_authenticated):
     device_id = TEST_DEVICE_ID
-    device_room_name = "Findeiss 1"
+    device = js_authenticated.device(device_id=device_id, detail=True)
+    device_room_name = device.get('location').get('room')
     device = js_authenticated.device_flattened(device_id=device_id)
     assert "lastInventoryUpdateTimestamp" in device
     assert device.get("location_room") == device_room_name
@@ -310,18 +360,7 @@ def test_get_site(js_authenticated):
 
     # Cleanup - none
 
-def test_update_inventory(js_authenticated):
-    # Setup
-    device_id = TEST_DEVICE_ID
-    desired_success = '<status>Command sent</status>'
-
-    # Exercise
-    response = js_authenticated.update_inventory(device_id)
-
-    # Verify
-    assert desired_success in response
-
-def test_flush_mobile_device_commands(js_authenticated):
+def test_flush_failed_mobile_device_commands(js_authenticated):
     # Setup
     device_id = TEST_DEVICE_ID
 
@@ -332,3 +371,18 @@ def test_flush_mobile_device_commands(js_authenticated):
     assert response
 
     # Cleanup - none
+
+def test_update_inventory(js_authenticated):
+    # Setup
+    device_id = TEST_DEVICE_ID
+    desired_success = '<status>Command sent</status>'
+    js_authenticated.flush_mobile_device_commands(device_id)
+    time.sleep(0.25)
+
+    # Exercise
+    response = js_authenticated.update_inventory(device_id)
+
+    # Verify
+    assert desired_success in response
+
+

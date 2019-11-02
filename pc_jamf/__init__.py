@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 
 AUTH_ENDPOINT = "auth/tokens"
 MOBILE_DEVICE_ENDPOINT = "v1/mobile-devices"
+MOBILE_DEVICE_PRESTAGE_ENDPOINT = "v1/mobile-device-prestages"
 SEARCH_DEVICE_ENDPOINT = "v1/search-mobile-devices"
 VALIDATION_ENDPOINT = "auth/current"
 INVALIDATE_ENDPOINT = "auth/invalidateToken"
@@ -19,6 +20,7 @@ CLASSIC_DEVICENAME_ENDPOINT = (
     f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/DeviceName"
 )
 DEVICE_RENAMING_RESTRICTION_PROFILE_ID = 127
+
 
 
 class PCJAMF:
@@ -360,6 +362,30 @@ class PCJAMF:
         if strip_extra:
             department = self.strip_extra_location_information(department)
         return department
+
+    def add_device_to_prestage(self, prestage_id: int, device_id: int=None, serial_number: str=None):
+        if device_id and not serial_number:
+            serial_number = self.device(device_id)['serialNumber']
+        url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
+        version_lock = self.session.get(self._url(url)).json()['versionLock']
+        payload = {"serialNumbers": [serial_number], "versionLock": version_lock}
+        r = self.session.put(url=self._url(url), json=payload)
+        if not r.ok:
+            print(f"Error {r.status_code}: {r.text}")
+            print(f"Adding Prestage: {self._url(url)} with payload {payload}")
+        return r.ok
+
+    def remove_device_from_prestage(self, prestage_id: int, device_id: int=None, serial_number: str=None):
+        if device_id and not serial_number:
+            serial_number = self.device(device_id)['serialNumber']
+        url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
+        version_lock = self.session.get(self._url(url)).json()['versionLock']
+        payload = {"serialNumbers": [serial_number], "versionLock": version_lock}
+        r = self.session.delete(url=self._url(url), json=payload)
+        if not r.ok:
+            print(f"Error {r.status_code}: {r.text}")
+            print(f"Adding Prestage: {self._url(url)} with payload {payload}")
+        return r.ok
 
     @staticmethod
     def strip_extra_location_information(location: dict) -> dict:
