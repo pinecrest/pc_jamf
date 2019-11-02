@@ -191,6 +191,17 @@ class PCJAMF:
 
         return cr.text
 
+    def clear_location_from_device(self, device_id):
+        location = {'building': None,
+        'department': None,
+        'emailAddress': '',
+        'realName': '',
+        'position': '',
+        'phoneNumber': '',
+        'room': '',
+        'username': ''}
+        return self.update_device(device_id, location=location)
+
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
         print(f"deleting device {device_id}")

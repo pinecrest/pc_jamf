@@ -12,6 +12,8 @@ username = config["credentials"].get("username", None).replace("@pinecrest.edu",
 password = config["credentials"].get("password", None)
 server = config["parameters"].get("server_name", None)
 
+TEST_DEVICE_ID = 779
+
 def test_available():
     assert PCJAMF.available(server=server)
 
@@ -85,21 +87,34 @@ def test_search_devices_by_uuid(js_authenticated):
 
 
 def test_get_device(js_authenticated):
-    device_id = 779
-    device = js_authenticated.device(device_id=device_id)
-    assert device["id"] == 779
+    device = js_authenticated.device(device_id=TEST_DEVICE_ID)
+    assert device["id"] == TEST_DEVICE_ID
     assert device.items()
 
+def test_clear_location_from_device(js_authenticated):
+    # Setup
+    device_id = TEST_DEVICE_ID
+    device = js_authenticated.device(device_id, detail=True)
+    old_location = device.get('location')
+
+    # Exercise
+    js_authenticated.clear_location_from_device(device_id)
+
+    # Verify
+    device = js_authenticated.device(device_id, detail=True)
+    assert not device['location']
+
+    # Cleanup
+    js_authenticated.update_device(device_id, location=old_location)
 
 def test_update_device_name(js_authenticated):
     # Setup
-    device_id = 779
     device_test_name = "fi-cart3-test"
-    device_original_name = js_authenticated.device(device_id=device_id)["name"]
+    device_original_name = js_authenticated.device(device_id=TEST_DEVICE_ID)["name"]
 
     # Exercise
     updated_device = js_authenticated.update_device_name(
-        device_id=device_id, name=device_test_name
+        device_id=TEST_DEVICE_ID, name=device_test_name
     )
 
     # Verify
@@ -108,13 +123,13 @@ def test_update_device_name(js_authenticated):
     # Cleanup
     time.sleep(20)
     updated_device = js_authenticated.update_device_name(
-        device_id=device_id, name=device_original_name
+        device_id=TEST_DEVICE_ID, name=device_original_name
     )
     assert '<status>Command sent</status>' in updated_device
 
 def test_os_update_device(js_authenticated):
     # Setup
-    device_id = 779
+    device_id = TEST_DEVICE_ID
 
     # Exercise
     updated_device = js_authenticated.update_os(
@@ -127,7 +142,7 @@ def test_os_update_device(js_authenticated):
     # None
 
 def test_device_flattened(js_authenticated):
-    device_id = 779
+    device_id = TEST_DEVICE_ID
     device_room_name = "Findeiss 1"
     device = js_authenticated.device_flattened(device_id=device_id)
     assert "lastInventoryUpdateTimestamp" in device
@@ -154,7 +169,7 @@ def test_token_invalidation():
 
 def test_update_device(js_authenticated):
     # Setup
-    device_id = 779
+    device_id = TEST_DEVICE_ID
     device = js_authenticated.device(device_id=device_id, detail=True)
     old_device_asset_tag = device["assetTag"]
     device_asset_tag_test = f"{old_device_asset_tag}-test"
@@ -297,7 +312,7 @@ def test_get_site(js_authenticated):
 
 def test_update_inventory(js_authenticated):
     # Setup
-    device_id = 779
+    device_id = TEST_DEVICE_ID
     desired_success = '<status>Command sent</status>'
 
     # Exercise
@@ -308,7 +323,7 @@ def test_update_inventory(js_authenticated):
 
 def test_flush_mobile_device_commands(js_authenticated):
     # Setup
-    device_id = 779
+    device_id = TEST_DEVICE_ID
 
     # Exercise
     response = js_authenticated.flush_mobile_device_commands(device_id, "Failed")
