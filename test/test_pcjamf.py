@@ -94,6 +94,24 @@ def test_get_device(js_authenticated):
 def test_flush_mobile_device_commands(js_authenticated):
     assert js_authenticated.flush_mobile_device_commands(TEST_DEVICE_ID)
 
+def test_update_device_name(js_authenticated):
+    # Setup
+    device_test_name = "fi-cart3-test"
+    js_authenticated.flush_mobile_device_commands(device_id=TEST_DEVICE_ID)
+    time.sleep(0.25)
+
+    # Exercise
+    updated_device = js_authenticated.update_device_name(
+        device_id=TEST_DEVICE_ID, name=device_test_name
+    )
+
+    # Verify
+    assert '<status>Command sent</status>' in updated_device
+
+    # Cleanup
+    js_authenticated.flush_mobile_device_commands(device_id=TEST_DEVICE_ID, status="Pending")
+
+
 def test_clear_location_from_device(js_authenticated):
     # Setup
     device_id = TEST_DEVICE_ID
@@ -115,9 +133,9 @@ def test_add_device_to_prestage_by_device_id(js_authenticated):
     device_id = TEST_DEVICE_ID
     serial_number = js_authenticated.device(device_id=device_id)['serialNumber']
     prestage_endpoint = js_authenticated._url('/uapi/v1/mobile-device-prestages/scope')
-    before_prestage = js_authenticated.session.get(prestage_endpoint).json()['serialsByPrestageId'].get(serial_number)
+    before_prestage = js_authenticated.get_prestage_id_for_device(device_id)
     if before_prestage:
-        js_authenticated.remove_device_from_prestage(device_id=device_id, prestage_id=before_prestage)
+        js_authenticated.remove_device_from_prestage(device_id=device_id)
     test_prestage = 58
     
     # Exercise
@@ -128,7 +146,7 @@ def test_add_device_to_prestage_by_device_id(js_authenticated):
     assert prestages[serial_number] == test_prestage
 
     # Cleanup
-    js_authenticated.remove_device_from_prestage(device_id=device_id, prestage_id=test_prestage)
+    js_authenticated.remove_device_from_prestage(device_id=device_id)
     if before_prestage:
         js_authenticated.add_device_to_prestage(device_id=device_id, prestage_id=before_prestage)
 
@@ -139,7 +157,7 @@ def test_add_device_to_prestage_by_serial(js_authenticated):
     prestage_endpoint = js_authenticated._url('/uapi/v1/mobile-device-prestages/scope')
     before_prestage = js_authenticated.session.get(prestage_endpoint).json()['serialsByPrestageId'].get(serial_number)
     if before_prestage:
-        js_authenticated.remove_device_from_prestage(serial_number=serial_number, prestage_id=before_prestage)
+        js_authenticated.remove_device_from_prestage(serial_number=serial_number)
     test_prestage = 58
     
     # Exercise
@@ -150,31 +168,18 @@ def test_add_device_to_prestage_by_serial(js_authenticated):
     assert prestages[serial_number] == test_prestage
 
     # Cleanup
-    js_authenticated.remove_device_from_prestage(serial_number=serial_number, prestage_id=test_prestage)
+    js_authenticated.remove_device_from_prestage(serial_number=serial_number)
     if before_prestage:
         js_authenticated.add_device_to_prestage(serial_number=serial_number, prestage_id=before_prestage)
 
-def test_update_device_name(js_authenticated):
-    # Setup
-    device_test_name = "fi-cart3-test"
-    device_original_name = js_authenticated.device(device_id=TEST_DEVICE_ID)["name"]
-    js_authenticated.flush_mobile_device_commands(device_id=TEST_DEVICE_ID)
+def test_device_flattened(js_authenticated):
+    device_id = TEST_DEVICE_ID
     time.sleep(0.25)
-
-    # Exercise
-    updated_device = js_authenticated.update_device_name(
-        device_id=TEST_DEVICE_ID, name=device_test_name
-    )
-
-    # Verify
-    assert '<status>Command sent</status>' in updated_device
-
-    # Cleanup
-    time.sleep(20)
-    updated_device = js_authenticated.update_device_name(
-        device_id=TEST_DEVICE_ID, name=device_original_name
-    )
-    assert '<status>Command sent</status>' in updated_device
+    device = js_authenticated.device(device_id=device_id, detail=True)
+    device_room_name = device.get('location').get('room')
+    device = js_authenticated.device_flattened(device_id=device_id)
+    assert "lastInventoryUpdateTimestamp" in device
+    assert device.get("location_room") == device_room_name
 
 def test_os_update_device(js_authenticated):
     # Setup
@@ -188,16 +193,7 @@ def test_os_update_device(js_authenticated):
     assert '<status>Command sent</status>' in updated_device
 
     # Cleanup
-    # None
-
-def test_device_flattened(js_authenticated):
-    device_id = TEST_DEVICE_ID
-    device = js_authenticated.device(device_id=device_id, detail=True)
-    device_room_name = device.get('location').get('room')
-    device = js_authenticated.device_flattened(device_id=device_id)
-    assert "lastInventoryUpdateTimestamp" in device
-    assert device.get("location_room") == device_room_name
-
+    js_authenticated.flush_mobile_device_commands(device_id)
 
 def test_token_invalidation():
     # Setup - create a one-off jamf session

@@ -375,9 +375,17 @@ class PCJAMF:
             print(f"Adding Prestage: {self._url(url)} with payload {payload}")
         return r.ok
 
-    def remove_device_from_prestage(self, prestage_id: int, device_id: int=None, serial_number: str=None):
+    def get_prestage_id_for_device(self, device_id):
+        device_serial = self.device(device_id)['serialNumber']
+        url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/scope"
+        return self.session.get(url=self._url(url)).json()['serialsByPrestageId'].get(device_serial)
+
+    def remove_device_from_prestage(self, device_id: int=None, serial_number: str=None):
         if device_id and not serial_number:
             serial_number = self.device(device_id)['serialNumber']
+        if not device_id and serial_number:
+            device_id = self.search_devices(serial=serial_number)[0].get('id')
+        prestage_id = self.get_prestage_id_for_device(device_id)
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
         version_lock = self.session.get(self._url(url)).json()['versionLock']
         payload = {"serialNumbers": [serial_number], "versionLock": version_lock}
