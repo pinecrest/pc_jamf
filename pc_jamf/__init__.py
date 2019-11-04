@@ -386,6 +386,8 @@ class PCJAMF:
         if not device_id and serial_number:
             device_id = self.search_devices(serial=serial_number)[0].get('id')
         prestage_id = self.get_prestage_id_for_device(device_id)
+        if not prestage_id:
+            return True
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
         version_lock = self.session.get(self._url(url)).json()['versionLock']
         payload = {"serialNumbers": [serial_number], "versionLock": version_lock}
