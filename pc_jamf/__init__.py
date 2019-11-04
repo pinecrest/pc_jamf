@@ -382,7 +382,8 @@ class PCJAMF:
 
     def remove_device_from_prestage(self, device_id: int=None, serial_number: str=None):
         if device_id and not serial_number:
-            serial_number = self.device(device_id)['serialNumber']
+            device = self.device(device_id, True)
+            serial_number = device['serialNumber']
         if not device_id and serial_number:
             device_id = self.search_devices(serial=serial_number)[0].get('id')
         prestage_id = self.get_prestage_id_for_device(device_id)
