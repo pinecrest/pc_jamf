@@ -382,8 +382,9 @@ class PCJAMF:
     def get_prestage_serials_and_vlock(self, prestage_id: int):
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
         r = self.session.get(url=self._url(url))
-        current_serials = [assignment['serialNumber'] for assignment in r.json()['assignments']]
-        version_lock = r.json()['versionLock']
+        payload = r.json()
+        current_serials = [assignment['serialNumber'] for assignment in payload['assignments']]
+        version_lock = payload['versionLock']
         return current_serials, version_lock
 
     def update_prestage_scope(self, prestage_id: int, serials: list, version_lock):
@@ -392,7 +393,8 @@ class PCJAMF:
         r = self.session.put(url=self._url(url), json=payload)
         if not r.ok:
             print(f"Error {r.status_code}: {r.text}")
-        print(f"Adding Prestage: {self._url(url)} with payload {payload}")
+        else:
+            print(f"Adding Prestage: {self._url(url)} with payload {payload}")
         return r.ok
 
     def remove_device_from_prestage(self, device_id: int=None, serial_number: str=None):
@@ -405,7 +407,7 @@ class PCJAMF:
         if not prestage_id:
             return True
         current_serials, version_lock = self.get_prestage_serials_and_vlock(prestage_id)
-        new_serials = [serial for serial in current_serial if serial != serial_number]
+        new_serials = [serial for serial in current_serials if serial != serial_number]
         return self.update_prestage_scope(prestage_id, new_serials, version_lock+1)
 
     @staticmethod
