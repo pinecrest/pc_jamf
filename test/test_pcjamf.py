@@ -128,6 +128,24 @@ def test_clear_location_from_device(js_authenticated):
     # Cleanup
     js_authenticated.update_device(device_id, location=old_location)
 
+def test_remove_device_from_prestage(js_authenticated):
+    # Setup
+    device_id = TEST_DEVICE_ID
+    serial_number = js_authenticated.device(device_id=device_id)['serialNumber']
+    before_prestage = js_authenticated.get_prestage_id_for_device(device_id)
+    assert before_prestage is not None
+
+    # Exercise
+    js_authenticated.remove_device_from_prestage(device_id)
+
+    # Verify
+    current_serials, _ = js_authenticated.get_prestage_serials_and_vlock(before_prestage)
+    assert serial_number not in current_serials
+    assert js_authenticated.get_prestage_id_for_device(device_id) is None
+
+    # Cleanup
+    js_authenticated.add_device_to_prestage(device_id=device_id, prestage_id=before_prestage)
+
 def test_add_device_to_prestage_by_device_id(js_authenticated):
     # Setup
     device_id = TEST_DEVICE_ID

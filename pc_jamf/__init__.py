@@ -372,7 +372,7 @@ class PCJAMF:
             return True
         else:
             current_serials.append(serial_number)
-        return self.update_prestage_scope(prestage_id, current_serials, version_lock+1)
+        return self.update_prestage_scope(prestage_id, current_serials, version_lock)
 
     def get_prestage_id_for_device(self, device_id: int):
         device_serial = self.device(device_id)['serialNumber']
@@ -408,7 +408,7 @@ class PCJAMF:
             return True
         current_serials, version_lock = self.get_prestage_serials_and_vlock(prestage_id)
         new_serials = [serial for serial in current_serials if serial != serial_number]
-        return self.update_prestage_scope(prestage_id, new_serials, version_lock+1)
+        return self.update_prestage_scope(prestage_id, new_serials, version_lock)
 
     @staticmethod
     def strip_extra_location_information(location: dict) -> dict:
