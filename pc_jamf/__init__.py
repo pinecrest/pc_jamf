@@ -383,7 +383,7 @@ class PCJAMF:
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
         r = self.session.get(url=self._url(url))
         current_serials = [assignment['serialNumber'] for assignment in r.json()['assignments']]
-        version_lock = r.json['versionLock']
+        version_lock = r.json()['versionLock']
         return current_serials, version_lock
 
     def update_prestage_scope(self, prestage_id: int, serials: list, version_lock):
