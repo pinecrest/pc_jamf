@@ -180,6 +180,7 @@ class PCJAMF:
     
     def update_os(self, device_id: int, force_install: bool=True)->str:
         install_action = 2 if force_install else 1
+        self.flush_mobile_device_commands(device_id=device_id)
 
         url = self._url(
             f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/ScheduleOSUpdate/{install_action}/id/{device_id}"
@@ -366,19 +367,33 @@ class PCJAMF:
     def add_device_to_prestage(self, prestage_id: int, device_id: int=None, serial_number: str=None):
         if device_id and not serial_number:
             serial_number = self.device(device_id)['serialNumber']
-        url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
-        version_lock = self.session.get(self._url(url)).json()['versionLock']
-        payload = {"serialNumbers": [serial_number], "versionLock": version_lock}
-        r = self.session.put(url=self._url(url), json=payload)
-        if not r.ok:
-            print(f"Error {r.status_code}: {r.text}")
-            print(f"Adding Prestage: {self._url(url)} with payload {payload}")
-        return r.ok
+        current_serials, version_lock = self.get_prestage_serials_and_vlock(prestage_id)
+        if serial_number in current_serials:
+            return True
+        else:
+            current_serials.append(serial_number)
+        return self.update_prestage_scope(prestage_id, current_serials, version_lock+1)
 
-    def get_prestage_id_for_device(self, device_id):
+    def get_prestage_id_for_device(self, device_id: int):
         device_serial = self.device(device_id)['serialNumber']
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/scope"
         return self.session.get(url=self._url(url)).json()['serialsByPrestageId'].get(device_serial)
+
+    def get_prestage_serials_and_vlock(self, prestage_id: int):
+        url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
+        r = self.session.get(url=self._url(url))
+        current_serials = [assignment['serialNumber'] for assignment in r.json()['assignments']]
+        version_lock = r.json['versionLock']
+        return current_serials, version_lock
+
+    def update_prestage_scope(self, prestage_id: int, serials: list, version_lock):
+        url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
+        payload = {"serialNumbers": serials, "versionLock": version_lock}
+        r = self.session.put(url=self._url(url), json=payload)
+        if not r.ok:
+            print(f"Error {r.status_code}: {r.text}")
+        print(f"Adding Prestage: {self._url(url)} with payload {payload}")
+        return r.ok
 
     def remove_device_from_prestage(self, device_id: int=None, serial_number: str=None):
         if device_id and not serial_number:
@@ -389,14 +404,9 @@ class PCJAMF:
         prestage_id = self.get_prestage_id_for_device(device_id)
         if not prestage_id:
             return True
-        url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
-        version_lock = self.session.get(self._url(url)).json()['versionLock']
-        payload = {"serialNumbers": [serial_number], "versionLock": version_lock}
-        r = self.session.delete(url=self._url(url), json=payload)
-        if not r.ok:
-            print(f"Error {r.status_code}: {r.text}")
-            print(f"Adding Prestage: {self._url(url)} with payload {payload}")
-        return r.ok
+        current_serials, version_lock = self.get_prestage_serials_and_vlock(prestage_id)
+        new_serials = [serial for serial in current_serial if serial != serial_number]
+        return self.update_prestage_scope(prestage_id, new_serials, version_lock+1)
 
     @staticmethod
     def strip_extra_location_information(location: dict) -> dict:
