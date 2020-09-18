@@ -19,3 +19,4 @@ sheets.googleapis.com-python.json
 /*.egg-info
 
 .pytest_cache/
+.python-version

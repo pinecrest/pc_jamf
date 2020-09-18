@@ -1,17 +1,14 @@
 import requests
-import time
 from urllib.parse import urljoin
-from datetime import datetime, timezone
-import json
-import pathlib
+from datetime import datetime
 from typing import Union
 from requests.auth import HTTPBasicAuth
 import html
 import xml.etree.ElementTree as ET
 
 AUTH_ENDPOINT = "auth/tokens"
-MOBILE_DEVICE_ENDPOINT = "v1/mobile-devices"
-MOBILE_DEVICE_PRESTAGE_ENDPOINT = "v1/mobile-device-prestages"
+MOBILE_DEVICE_ENDPOINT = "v2/mobile-devices"
+MOBILE_DEVICE_PRESTAGE_ENDPOINT = "v2/mobile-device-prestages"
 SEARCH_DEVICE_ENDPOINT = "v1/search-mobile-devices"
 VALIDATION_ENDPOINT = "auth/current"
 INVALIDATE_ENDPOINT = "auth/invalidateToken"
@@ -22,38 +19,48 @@ CLASSIC_DEVICENAME_ENDPOINT = (
 DEVICE_RENAMING_RESTRICTION_PROFILE_ID = 127
 
 
-
 class PCJAMF:
     """
-    The PCJAMF class provides an interface to the Pine Crest JAMF server for mobile device management (MDM)
+    The PCJAMF class provides an interface to the Pine Crest JAMF
+    server for mobile device management (MDM)
 
     Class Methods:
         available: checks to see if the server is accessible
             server (str): the protocol, url, and port of a JAMF server
             path (str): the path to the server. (optional)
-            verify (str, bool): whether to verify SSL certificates. Set to a PEM CA store 
+            verify (str, bool): whether to verify SSL certificates.
+                Set to a PEM CA store
                 for custom validation. Set to False for self-signed certs
 
     Args:
         username: the username to use for authentication
         password: the password to use for authentication
         server: the JAMF server path, including protocol, fqdn, and port
-        verify (str, bool): the path to a CA file for cert verification 
+        verify (str, bool): the path to a CA file for cert verification
             or False to disable SSL certificate verification
 
     """
 
-    jamf_api_root = "/uapi/"
+    jamf_api_root = "/api/"
 
     @classmethod
     def available(
         cls,
         server: str,
-        path: str = "v1/jamf-pro-server-url",
+        path: str = "v2/jamf-pro-server-url",
         verify: Union[str, bool] = True,
     ) -> bool:
-        """
-        checks to see if the provided jamf server is accessible
+        """checks to see if the JAMF server is available
+
+        Args:
+            server (str): full url for server, including port
+            path (str, optional): endpoint to use for verification.
+            Defaults to "v2/jamf-pro-server-url".
+            verify (Union[str, bool], optional): whether to verify
+            SSL certificates. Defaults to True.
+
+        Returns:
+            bool: True if server responds with 2XX or 401, False otherwise
         """
 
         cls.jamf_url = urljoin(server, cls.jamf_api_root)
@@ -86,12 +93,18 @@ class PCJAMF:
 
     def authenticate(self):
         """
-        Connect to the JAMF server, authenticate using existing credentials, and get an API token
+        Connect to the JAMF server, authenticate using existing
+        credentials, and get an API token
+
+        Raises:
+            Exception: [description]
+        """
+
+        """
         """
         self.session.auth = self.credentials
         r = self.session.post(self._url(AUTH_ENDPOINT))
-        if not r.ok:
-            raise Exception(f"Invalid status code found. ({r.status_code})")
+        r.raise_for_status()
         auth_data = r.json()
         self.token = auth_data["token"]
         self.auth_expiration = datetime.fromtimestamp(auth_data["expires"] / 1000)
@@ -99,26 +112,56 @@ class PCJAMF:
         self.session.headers.update({"Authorization": f"Bearer {self.token}"})
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         """
         Indicates if the server object is currently authenticated
+
+        Returns:
+            bool: True if the server object is currently authenticated
         """
         return self.token and self.auth_expiration > datetime.now()
 
     def _url(self, endpoint):
         return urljoin(self.jamf_url, endpoint)
 
-    def all_devices(self):
+    def all_devices(self) -> Union[list, dict]:
+        """Fetch all mobile devices in JAMF database
+
+        Returns:
+            Union[list, dict]: json object from response
+        """
         r = self.session.get(self._url(MOBILE_DEVICE_ENDPOINT))
+        r.raise_for_status()
         return r.json()
 
-    def search_devices(self, *, serial=None, name=None, udid=None, asset_tag=None):
+    def search_devices(
+        self,
+        *,
+        serial: str = None,
+        name: str = None,
+        udid: str = None,
+        asset_tag: str = None,
+    ):
+        """[summary]
+
+        Args:
+            serial (str, optional): [description]. Defaults to None.
+            name (str, optional): [description]. Defaults to None.
+            udid (str, optional): [description]. Defaults to None.
+            asset_tag (str, optional): [description]. Defaults to None.
+
+        Raises:
+            Exception: [description]
+
+        Returns:
+            [type]: [description]
+        """
         search_params = {"pageNumber": 0, "pageSize": 100}
         if not any((serial, name, udid, asset_tag)):
             raise Exception("You must provide at least one search term")
 
         if name:
-            search_params["name"] = name    
+            search_params["name"] = name
         if serial:
             search_params["serialNumber"] = serial
         if udid:
@@ -127,13 +170,10 @@ class PCJAMF:
             search_params["assetTag"] = asset_tag
 
         r = self.session.post(url=self._url(SEARCH_DEVICE_ENDPOINT), json=search_params)
+        r.raise_for_status()
         payload = r.json()
-        if payload.get("totalCount", 0) > 0:
-            return payload["results"]
-        else:
-            raise Exception(
-                f"No results found for query\nserial: {serial}\nid: {name}\nudid:{udid}"
-            )
+
+        return payload.get("results", [])
 
     def device(self, device_id, detail=False):
         url = self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}")
@@ -157,7 +197,9 @@ class PCJAMF:
     def wipe_device(self, device_id):
 
         url = self._url(
-            html.escape(f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/EraseDevice/id/{device_id}")
+            html.escape(
+                f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/EraseDevice/id/{device_id}"
+            )
         )
         cr = self.classic_session.post(url=url, data="")
         if cr.status_code != 201:
@@ -177,8 +219,8 @@ class PCJAMF:
             raise Exception("Unable to push device update inventory")
 
         return cr.text
-    
-    def update_os(self, device_id: int, force_install: bool=True)->str:
+
+    def update_os(self, device_id: int, force_install: bool = True) -> str:
         install_action = 2 if force_install else 1
         self.flush_mobile_device_commands(device_id=device_id)
 
@@ -194,16 +236,36 @@ class PCJAMF:
 
         return cr.text
 
+    def recalculate_smart_groups(self, device_id):
+        """Recalculates the smart groups for a device and returns the count of active smart groups
+
+        Args:
+            device_id (str): a string verion of the JSS id
+
+        Returns:
+            int: an integer count of the number of smart groups for the device
+        """
+        endpoint = MOBILE_DEVICE_ENDPOINT.replace("v2/", "v1/", 1)
+        url = self._url(html.escape(f"{endpoint}/{device_id}/recalculate-smart-groups"))
+        r = self.session.post(url=url)
+        r.raise_for_status()
+        return int(r.json().get("count"))
+
     def clear_location_from_device(self, device_id):
-        location = {'building': None,
-        'department': None,
-        'emailAddress': '',
-        'realName': '',
-        'position': '',
-        'phoneNumber': '',
-        'room': '',
-        'username': ''}
-        return self.update_device(device_id, location=location)
+        location = {
+            "buildingId": None,
+            "departmentId": None,
+            "emailAddress": "",
+            "realName": "",
+            "position": "",
+            "phoneNumber": "",
+            "room": "",
+            "username": "",
+        }
+        self.update_device(device_id, location=location)
+        self.recalculate_smart_groups(device_id)
+        
+
 
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
@@ -334,13 +396,12 @@ class PCJAMF:
         r = self.session.patch(
             self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}"), json=payload
         )
-        if not r.ok:
-            print(f"Error {r.status_code}: {r.text}")
+        r.raise_for_status()
         return r.ok
 
     def set_device_room(self, device_id: int, room_name: str) -> dict:
         """
-        Method to retrieve a room location from JAMF
+        Method to update a device's room location from JAMF
         """
         return self.update_device(device_id, location={"room": room_name})
 
@@ -359,14 +420,16 @@ class PCJAMF:
 
     def get_department(self, department_name: str, strip_extra: bool = True) -> dict:
         departments = self.get_departments()
-        department = self.get_object_by_name(departments, department_name)
+        department = self.get_object_from_results_by_name(departments, department_name)
         if strip_extra:
             department = self.strip_extra_location_information(department)
         return department
 
-    def add_device_to_prestage(self, prestage_id: int, device_id: int=None, serial_number: str=None):
+    def add_device_to_prestage(
+        self, prestage_id: int, device_id: int = None, serial_number: str = None
+    ):
         if device_id and not serial_number:
-            serial_number = self.device(device_id)['serialNumber']
+            serial_number = self.device(device_id)["serialNumber"]
         current_serials, version_lock = self.get_prestage_serials_and_vlock(prestage_id)
         if serial_number in current_serials:
             return True
@@ -375,16 +438,22 @@ class PCJAMF:
         return self.update_prestage_scope(prestage_id, current_serials, version_lock)
 
     def get_prestage_id_for_device(self, device_id: int):
-        device_serial = self.device(device_id)['serialNumber']
+        device_serial = self.device(device_id)["serialNumber"]
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/scope"
-        return self.session.get(url=self._url(url)).json()['serialsByPrestageId'].get(device_serial)
+        return (
+            self.session.get(url=self._url(url))
+            .json()["serialsByPrestageId"]
+            .get(device_serial)
+        )
 
     def get_prestage_serials_and_vlock(self, prestage_id: int):
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
         r = self.session.get(url=self._url(url))
         payload = r.json()
-        current_serials = [assignment['serialNumber'] for assignment in payload['assignments']]
-        version_lock = payload['versionLock']
+        current_serials = [
+            assignment["serialNumber"] for assignment in payload["assignments"]
+        ]
+        version_lock = payload["versionLock"]
         return current_serials, version_lock
 
     def update_prestage_scope(self, prestage_id: int, serials: list, version_lock):
@@ -397,12 +466,14 @@ class PCJAMF:
             print(f"Adding Prestage: {self._url(url)} with payload {payload}")
         return r.ok
 
-    def remove_device_from_prestage(self, device_id: int=None, serial_number: str=None):
+    def remove_device_from_prestage(
+        self, device_id: int = None, serial_number: str = None
+    ):
         if device_id and not serial_number:
             device = self.device(device_id, True)
-            serial_number = device['serialNumber']
+            serial_number = device["serialNumber"]
         if not device_id and serial_number:
-            device_id = self.search_devices(serial=serial_number)[0].get('id')
+            device_id = self.search_devices(serial=serial_number)[0].get("id")
         prestage_id = self.get_prestage_id_for_device(device_id)
         if not prestage_id:
             return True
@@ -432,6 +503,9 @@ class PCJAMF:
 
     def get_object_by_name(self, object_list, name) -> dict:
         return next((item for item in object_list if item["name"] == name), None)
+    
+    def get_object_from_results_by_name(self, object_list, name) -> dict:
+        return next((item for item in object_list['results'] if item["name"] == name), None)
 
     def flush_mobile_device_commands(self, device_id, status=None):
 
@@ -450,4 +524,3 @@ class PCJAMF:
         return self.classic_session.delete(
             url, headers={"accept": "application/json"}
         ).ok
-
