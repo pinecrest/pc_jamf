@@ -17,6 +17,7 @@ CLASSIC_DEVICENAME_ENDPOINT = (
     f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/DeviceName"
 )
 DEVICE_RENAMING_RESTRICTION_PROFILE_ID = 127
+DEVICES_PAGE_SIZE = 2500
 
 
 class PCJAMF:
@@ -130,7 +131,8 @@ class PCJAMF:
         Returns:
             Union[list, dict]: json object from response
         """
-        r = self.session.get(self._url(MOBILE_DEVICE_ENDPOINT))
+        params = {"page-size": DEVICES_PAGE_SIZE}
+        r = self.session.get(self._url(MOBILE_DEVICE_ENDPOINT), params=params)
         r.raise_for_status()
         return r.json()
 
@@ -416,11 +418,11 @@ class PCJAMF:
         return building
 
     def get_departments(self) -> dict:
-        return self.get_object_list("v1/departments/")
+        return self.get_object_list("v1/departments/")['results']
 
     def get_department(self, department_name: str, strip_extra: bool = True) -> dict:
         departments = self.get_departments()
-        department = self.get_object_from_results_by_name(departments, department_name)
+        department = self.get_object_by_name(departments, department_name)
         if strip_extra:
             department = self.strip_extra_location_information(department)
         return department
@@ -503,9 +505,6 @@ class PCJAMF:
 
     def get_object_by_name(self, object_list, name) -> dict:
         return next((item for item in object_list if item["name"] == name), None)
-    
-    def get_object_from_results_by_name(self, object_list, name) -> dict:
-        return next((item for item in object_list['results'] if item["name"] == name), None)
 
     def flush_mobile_device_commands(self, device_id, status=None):
 
@@ -513,7 +512,7 @@ class PCJAMF:
             status = "Pending+Failed"
 
         if status not in ("Pending", "Failed", "Pending+Failed"):
-            raise Exception("Invalid Status: {status}")
+            raise ValueError("Invalid Status: {status}")
 
         url = self._url(
             html.escape(
@@ -521,6 +520,9 @@ class PCJAMF:
             )
         )
 
-        return self.classic_session.delete(
+        r = self.classic_session.delete(
             url, headers={"accept": "application/json"}
-        ).ok
+        )
+        r.raise_for_status()
+        return r.ok
+
