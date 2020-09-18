@@ -264,7 +264,7 @@ class PCJAMF:
         }
         self.update_device(device_id, location=location)
         self.recalculate_smart_groups(device_id)
-        
+       
 
 
     def delete_device(self, device_id):
