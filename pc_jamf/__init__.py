@@ -138,44 +138,49 @@ class PCJAMF:
 
     def search_devices(
         self,
-        *,
-        serial: str = None,
-        name: str = None,
-        udid: str = None,
-        asset_tag: str = None,
+        query: str
     ):
-        """[summary]
+        """Search JAMF using the classic API for matches
 
         Args:
-            serial (str, optional): [description]. Defaults to None.
-            name (str, optional): [description]. Defaults to None.
-            udid (str, optional): [description]. Defaults to None.
-            asset_tag (str, optional): [description]. Defaults to None.
+            query (str): A query term including name, mac address, assetTag, etc.
 
         Raises:
-            Exception: [description]
+            HTTPError: based on response from server
 
         Returns:
-            [type]: [description]
+            str: first device id in returned results
         """
-        search_params = {"pageNumber": 0, "pageSize": 100}
-        if not any((serial, name, udid, asset_tag)):
-            raise Exception("You must provide at least one search term")
 
-        if name:
-            search_params["name"] = name
-        if serial:
-            search_params["serialNumber"] = serial
-        if udid:
-            search_params["udid"] = udid
-        if asset_tag:
-            search_params["assetTag"] = asset_tag
-
-        r = self.session.post(url=self._url(SEARCH_DEVICE_ENDPOINT), json=search_params)
+        r = self.session.post(url=self._url(f"{SEARCH_DEVICE_ENDPOINT}/{query}"))
         r.raise_for_status()
-        payload = r.json()
+        root = ET.fromstring(r.text)
+        device_id = root.findall(".//mobile_devices/mobile_device/id")[0].text
 
-        return payload.get("results", [])
+        return str(device_id)
+
+    def search_query(
+        self,
+        query: str
+    ):
+        """Search JAMF using the classic API for matches
+
+        Args:
+            query (str): A query term including name, mac address, assetTag, etc.
+
+        Raises:
+            HTTPError: based on response from server
+
+        Returns:
+            str: first device id in returned results
+        """
+
+        r = self.session.post(url=self._url(f"{SEARCH_DEVICE_ENDPOINT}/{query}"))
+        r.raise_for_status()
+        root = ET.fromstring(r.text)
+        device_id = root.findall(".//mobile_devices/mobile_device/id")[0].text
+
+        return str(device_id)
 
     def device(self, device_id, detail=False):
         url = self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}")
@@ -387,7 +392,7 @@ class PCJAMF:
         configuration_id = configuration_profile.findall("./general/id")[0].text
         r = self.classic_session.put(
             f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/"
-            "{configuration_id}",
+            f"{configuration_id}",
             ET.tostring(configuration_profile),
         )
         return r.status_code == 201
