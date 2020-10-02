@@ -10,12 +10,14 @@ AUTH_ENDPOINT = "auth/tokens"
 MOBILE_DEVICE_ENDPOINT = "v2/mobile-devices"
 MOBILE_DEVICE_PRESTAGE_ENDPOINT = "v2/mobile-device-prestages"
 SEARCH_DEVICE_ENDPOINT = "v1/search-mobile-devices"
+
 VALIDATION_ENDPOINT = "auth/current"
 INVALIDATE_ENDPOINT = "auth/invalidateToken"
 CLASSIC_ENDPOINT = "/JSSResource"
 CLASSIC_DEVICENAME_ENDPOINT = (
     f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/DeviceName"
 )
+CLASSIC_SEARCH_DEVICE_ENDPOINT = f"{CLASSIC_ENDPOINT}/mobiledevices/match"
 DEVICE_RENAMING_RESTRICTION_PROFILE_ID = 127
 DEVICES_PAGE_SIZE = 2500
 
@@ -136,7 +138,7 @@ class PCJAMF:
         r.raise_for_status()
         return r.json()
 
-        def search_devices(
+    def search_devices(
         self,
         *,
         serial: str = None,
@@ -174,10 +176,7 @@ class PCJAMF:
 
         return payload.get("results", [])
 
-    def search_query(
-        self,
-        query: str
-    ):
+    def search_query(self, query: str):
         """Search JAMF using the classic API for matches
 
         Args:
@@ -190,12 +189,13 @@ class PCJAMF:
             str: first device id in returned results
         """
 
-        r = self.session.post(url=self._url(f"{SEARCH_DEVICE_ENDPOINT}/{query}"))
+        r = self.classic_session.get(
+            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}")), data=""
+        )
         r.raise_for_status()
         root = ET.fromstring(r.text)
-        device_id = root.findall(".//mobile_devices/mobile_device/id")[0].text
-
-        return str(device_id)
+        device_ids = root.findall(".//id")
+        return [device_id.text for device_id in device_ids]
 
     def device(self, device_id, detail=False):
         url = self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}")

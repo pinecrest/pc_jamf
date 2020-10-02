@@ -13,6 +13,7 @@ password = config["credentials"].get("password", None)
 server = config["parameters"].get("server_name", None)
 
 TEST_DEVICE_ID = "***REMOVED***"
+TEST_ASSET_TAG = "FTL05400"
 
 
 def test_available():
@@ -99,6 +100,18 @@ def test_search_devices_by_uuid(js_authenticated):
     with pytest.raises(Exception):
         udid = "null"
         assert js_authenticated.search_devices(udid=udid)
+
+
+def test_search_devices_by_asset_tag(js_authenticated):
+    # Setup
+    device_id = "***REMOVED***"
+    asset_tag = "FTL05400"
+
+    # Exercise
+    results = js_authenticated.search_query(query=asset_tag)
+
+    # Verify
+    assert device_id in results
 
 
 def test_get_device(js_authenticated):
