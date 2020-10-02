@@ -86,7 +86,7 @@ class PCJAMF:
         self.classic_session.auth = HTTPBasicAuth(username, password)
         self.classic_session.headers.update({"Accept": "application/xml"})
 
-    def __del__(self):
+    def close(self):
         if self.authenticated:
             self.invalidate()
             self.session.close()
@@ -200,7 +200,8 @@ class PCJAMF:
 
         url = self._url(
             html.escape(
-                f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/EraseDevice/id/{device_id}"
+                f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/"
+                "EraseDevice/id/{device_id}"
             )
         )
         cr = self.classic_session.post(url=url, data="")
@@ -211,7 +212,8 @@ class PCJAMF:
 
     def update_inventory(self, device_id: int) -> str:
         url = self._url(
-            f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/UpdateInventory/id/{device_id}"
+            f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/"
+            f"UpdateInventory/id/{device_id}"
         )
         cr = self.classic_session.post(url=url)
         if cr.status_code != 201:
@@ -227,19 +229,16 @@ class PCJAMF:
         self.flush_mobile_device_commands(device_id=device_id)
 
         url = self._url(
-            f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/ScheduleOSUpdate/{install_action}/id/{device_id}"
+            f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/"
+            f"ScheduleOSUpdate/{install_action}/id/{device_id}"
         )
         cr = self.classic_session.post(url=url)
-        if cr.status_code != 201:
-            print(url)
-            print(cr.text)
-            print(cr.status_code)
-            raise Exception("Unable to push device OS update")
-
+        cr.raise_for_status()
         return cr.text
 
     def recalculate_smart_groups(self, device_id):
-        """Recalculates the smart groups for a device and returns the count of active smart groups
+        """Recalculates the smart groups for a device and returns the count
+        of active smart groups
 
         Args:
             device_id (str): a string verion of the JSS id
@@ -266,8 +265,6 @@ class PCJAMF:
         }
         self.update_device(device_id, location=location)
         self.recalculate_smart_groups(device_id)
-       
-
 
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
@@ -310,7 +307,7 @@ class PCJAMF:
             device.update(
                 {
                     k: v
-                    for k, v in extended_device_info["ios"].items()
+                    for k, v in extended_device_info.get("ios", {}).items()
                     if not isinstance(v, dict) and not isinstance(v, list)
                 }
             )
@@ -343,7 +340,8 @@ class PCJAMF:
         self, device_id: int, configuration_profile_id: int, exclude_device: bool = True
     ) -> bool:
         """
-        Add or remove a mobile device from a mobile device configuration profile exclusion list
+        Add or remove a mobile device from a mobile device configuration
+        profile exclusion list
         """
         device = self.device(device_id=device_id)
         root = self.get_configuration_profile(configuration_profile_id)
@@ -378,7 +376,8 @@ class PCJAMF:
         self, configuration_profile_id: int
     ) -> ET.ElementTree:
         r = self.classic_session.get(
-            f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/{configuration_profile_id}"
+            f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/"
+            "{configuration_profile_id}"
         )
         return ET.fromstring(r.text)
 
@@ -387,7 +386,8 @@ class PCJAMF:
     ) -> bool:
         configuration_id = configuration_profile.findall("./general/id")[0].text
         r = self.classic_session.put(
-            f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/{configuration_id}",
+            f"{self.jamf_server}JSSResource/mobiledeviceconfigurationprofiles/id/"
+            "{configuration_id}",
             ET.tostring(configuration_profile),
         )
         return r.status_code == 201
@@ -398,6 +398,7 @@ class PCJAMF:
         r = self.session.patch(
             self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}"), json=payload
         )
+        print(payload)
         r.raise_for_status()
         return r.ok
 
@@ -418,7 +419,7 @@ class PCJAMF:
         return building
 
     def get_departments(self) -> dict:
-        return self.get_object_list("v1/departments/")['results']
+        return self.get_object_list("v1/departments/")["results"]
 
     def get_department(self, department_name: str, strip_extra: bool = True) -> dict:
         departments = self.get_departments()
@@ -512,17 +513,15 @@ class PCJAMF:
             status = "Pending+Failed"
 
         if status not in ("Pending", "Failed", "Pending+Failed"):
-            raise ValueError("Invalid Status: {status}")
+            raise ValueError(f"Invalid Status: {status}")
 
         url = self._url(
             html.escape(
-                f"{CLASSIC_ENDPOINT}/commandflush/mobiledevices/id/{device_id}/status/{status}"
+                f"{CLASSIC_ENDPOINT}/commandflush/mobiledevices/id/{device_id}"
+                f"/status/{status}"
             )
         )
 
-        r = self.classic_session.delete(
-            url, headers={"accept": "application/json"}
-        )
+        r = self.classic_session.delete(url, headers={"accept": "application/json"})
         r.raise_for_status()
         return r.ok
-

@@ -1,9 +1,10 @@
-from pc_jamf import PCJAMF
+from pc_jamf import PCJAMF, CLASSIC_ENDPOINT
 import configparser
 import pytest
 import datetime
 from pprint import pprint
 import time
+import html
 
 config = configparser.ConfigParser()
 config.read("config.txt")
@@ -11,7 +12,7 @@ username = config["credentials"].get("username", None).replace("@pinecrest.edu",
 password = config["credentials"].get("password", None)
 server = config["parameters"].get("server_name", None)
 
-TEST_DEVICE_ID = "779"
+TEST_DEVICE_ID = "***REMOVED***"
 
 
 def test_available():
@@ -23,6 +24,7 @@ def jamf_session():
     if PCJAMF.available(server=server):
         jamf = PCJAMF(username, password, server=server)
         yield jamf
+        jamf.close()
     else:
         raise Exception(
             "PC JAMF Server not available. Check your connection and try again."
@@ -31,8 +33,9 @@ def jamf_session():
 
 @pytest.fixture(scope="session")
 def js_authenticated(jamf_session):
+    jamf_session.authenticate()
     if not jamf_session.authenticated:
-        jamf_session.authenticate()
+        raise IOError("Unable to authenticate")
     return jamf_session
 
 
@@ -51,6 +54,18 @@ def test_authenticated():
     assert not jamf_session.authenticated
     jamf_session.token, jamf_session.auth_expiration = token, auth_exp_holding
     assert jamf_session.authenticated
+
+
+def test_classic_session_auth(jamf_session):
+    username = jamf_session.credentials[0]
+
+    url = jamf_session._url(
+        html.escape(f"{CLASSIC_ENDPOINT}/accounts/username/{username}")
+    )
+    r = jamf_session.classic_session.get(url)
+
+    assert r.status_code == 200
+    assert username in r.text
 
 
 def test_validate_token(js_authenticated):
@@ -236,7 +251,10 @@ def test_os_update_device(js_authenticated):
     updated_device = js_authenticated.update_os(device_id=device_id, force_install=True)
 
     # Verify
-    assert "<status>Command sent</status>" in updated_device
+    assert (
+        "<status>Command sent</status>" in updated_device
+        or "OS updates are not supported for device" in updated_device
+    )
 
     # Cleanup
     js_authenticated.flush_mobile_device_commands(device_id)
@@ -288,12 +306,13 @@ def test_recalculate_smart_groups(js_authenticated):
     # Verify
     assert smart_group_count > 0
 
+
 def test_update_department(js_authenticated):
     # Setup
     device_id = TEST_DEVICE_ID
     department_id = "49"
     device = js_authenticated.device(device_id, detail=True)
-    device_location = device.get("location")
+    device_location = {}
     old_dept_id = device_location.get("departmentId")
 
     # Exercise
@@ -302,13 +321,13 @@ def test_update_department(js_authenticated):
     time.sleep(0.5)
     js_authenticated.recalculate_smart_groups(device_id)
     time.sleep(0.5)
-    device = js_authenticated.device(device_location, detail=True)
+    device = js_authenticated.device(device_id, detail=True)
 
     # Verify
-    assert device_location == device.get("location")
+    assert department_id == device.get("location", {}).get("departmentId")
 
     # Clean Up
-    device_location['departmentId'] = old_dept_id
+    device_location["departmentId"] = old_dept_id
     js_authenticated.update_device(device_id, location=device_location)
 
 
@@ -317,15 +336,21 @@ def test_remove_department(js_authenticated):
     device_id = TEST_DEVICE_ID
     department_id = None
     device = js_authenticated.device(device_id, detail=True)
-    device_location = device.get("location")
+    old_department_id = device.get("location", {}).get("departmentId")
+    device_location = {}
 
     # Exercise
     device_location["departmentId"] = department_id
     assert js_authenticated.update_device(device_id, location=device_location)
-    device = js_authenticated.device(device_location, detail=True)
+    device = js_authenticated.device(device_id, detail=True)
 
     # Verify
-    assert device_location == device.get("location")
+    assert device.get("location").get("departmentId") is None
+
+    # Cleanup
+    js_authenticated.update_device(
+        device_id, location={"departmentId": old_department_id}
+    )
 
 
 def test_get_buildings(js_authenticated):
@@ -343,7 +368,7 @@ def test_get_buildings(js_authenticated):
 def test_get_building(js_authenticated):
     # Setup
     building_name = "***REMOVED***"
-    desired_id = '4'
+    desired_id = "4"
 
     # Exercise
     building = js_authenticated.get_building(building_name)
@@ -486,6 +511,7 @@ def test_update_inventory(js_authenticated):
 
     # Exercise
     response = js_authenticated.update_inventory(device_id)
+    print(response)
 
     # Verify
     assert desired_success in response
