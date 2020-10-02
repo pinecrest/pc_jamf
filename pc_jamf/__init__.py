@@ -136,28 +136,43 @@ class PCJAMF:
         r.raise_for_status()
         return r.json()
 
-    def search_devices(
+        def search_devices(
         self,
-        query: str
+        *,
+        serial: str = None,
+        name: str = None,
+        udid: str = None,
+        asset_tag: str = None,
     ):
-        """Search JAMF using the classic API for matches
-
+        """[summary]
         Args:
-            query (str): A query term including name, mac address, assetTag, etc.
-
+            serial (str, optional): [description]. Defaults to None.
+            name (str, optional): [description]. Defaults to None.
+            udid (str, optional): [description]. Defaults to None.
+            asset_tag (str, optional): [description]. Defaults to None.
         Raises:
-            HTTPError: based on response from server
-
+            Exception: [description]
         Returns:
-            str: first device id in returned results
+            [type]: [description]
         """
+        search_params = {"pageNumber": 0, "pageSize": 100}
+        if not any((serial, name, udid, asset_tag)):
+            raise Exception("You must provide at least one search term")
 
-        r = self.session.post(url=self._url(f"{SEARCH_DEVICE_ENDPOINT}/{query}"))
+        if name:
+            search_params["name"] = name
+        if serial:
+            search_params["serialNumber"] = serial
+        if udid:
+            search_params["udid"] = udid
+        if asset_tag:
+            search_params["assetTag"] = asset_tag
+
+        r = self.session.post(url=self._url(SEARCH_DEVICE_ENDPOINT), json=search_params)
         r.raise_for_status()
-        root = ET.fromstring(r.text)
-        device_id = root.findall(".//mobile_devices/mobile_device/id")[0].text
+        payload = r.json()
 
-        return str(device_id)
+        return payload.get("results", [])
 
     def search_query(
         self,
