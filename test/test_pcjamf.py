@@ -149,6 +149,7 @@ def test_clear_location_from_device(js_authenticated):
     device_id = TEST_DEVICE_ID
     device = js_authenticated.device(device_id, detail=True)
     old_location = device.get("location")
+    old_location = {key: value for key, value in old_location.items() if value}
 
     # Exercise
     js_authenticated.clear_location_from_device(device_id)
@@ -157,6 +158,7 @@ def test_clear_location_from_device(js_authenticated):
     device = js_authenticated.device(device_id, detail=True)
     assert not any(device["location"].values())
 
+    print(old_location)
     # Cleanup
     js_authenticated.update_device(device_id, location=old_location)
 
