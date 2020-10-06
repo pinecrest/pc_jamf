@@ -1,29 +1,28 @@
 from pc_jamf import PCJAMF, CLASSIC_ENDPOINT
-import configparser
 import pytest
 import datetime
 from pprint import pprint
 import time
 import html
+from decouple import AutoConfig
 
-config = configparser.ConfigParser()
-config.read("config.txt")
-username = config["credentials"].get("username", None).replace("@pinecrest.edu", "")
-password = config["credentials"].get("password", None)
-server = config["parameters"].get("server_name", None)
+config = AutoConfig("config.txt")
 
-TEST_DEVICE_ID = "***REMOVED***"
-TEST_ASSET_TAG = "FTL05400"
+TEST_USERNAME = config("TEST_USERNAME")
+TEST_PASSWORD = config("TEST_PASSWORD")
+TEST_SERVER = config("TEST_SERVERNAME")
+TEST_DEVICE_ID = config("TEST_DEVICE_ID")
+TEST_ASSET_TAG = config("TEST_ASSET_TAG")
 
 
 def test_available():
-    assert PCJAMF.available(server=server)
+    assert PCJAMF.available(server=TEST_SERVER)
 
 
 @pytest.fixture(scope="session")
 def jamf_session():
-    if PCJAMF.available(server=server):
-        jamf = PCJAMF(username, password, server=server)
+    if PCJAMF.available(server=TEST_SERVER):
+        jamf = PCJAMF(TEST_USERNAME, TEST_PASSWORD, server=TEST_SERVER)
         yield jamf
         jamf.close()
     else:
@@ -41,7 +40,7 @@ def js_authenticated(jamf_session):
 
 
 def test_authenticated():
-    jamf_session = PCJAMF(username, password, server)
+    jamf_session = PCJAMF(TEST_USERNAME, TEST_PASSWORD, TEST_SERVER)
     assert not jamf_session.authenticated
     jamf_session.authenticate()
     assert jamf_session.authenticated
@@ -277,7 +276,7 @@ def test_os_update_device(js_authenticated):
 
 def test_token_invalidation():
     # Setup - create a one-off jamf session
-    test_session = PCJAMF(username, password, server)
+    test_session = PCJAMF(TEST_USERNAME, TEST_PASSWORD, TEST_SERVER)
     test_session.authenticate()
 
     # Exercise
