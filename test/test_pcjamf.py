@@ -13,6 +13,14 @@ TEST_PASSWORD = config("TEST_PASSWORD")
 TEST_SERVER = config("TEST_SERVERNAME")
 TEST_DEVICE_ID = config("TEST_DEVICE_ID")
 TEST_ASSET_TAG = config("TEST_ASSET_TAG")
+TEST_SERIAL_NUMBER = config("TEST_SERIAL_NUMBER")
+TEST_UUID = config("TEST_UUID")
+TEST_DEPARTMENT_NAME = config("TEST_DEPARTMENT_NAME")
+TEST_DEPARTMENT_ID = config("TEST_DEPARTMENT_ID")
+TEST_BUILDING_NAME = config("TEST_BUILDING_NAME")
+TEST_BUILDING_ID = config("TEST_BUILDING_ID")
+TEST_SITE_NAME = config("TEST_SITE_NAME")
+TEST_SITE_ID = config("TEST_SITE_ID")
 
 
 def test_available():
@@ -84,7 +92,7 @@ def test_all_devices(js_authenticated):
 
 
 def test_search_devices_by_serial(js_authenticated):
-    serial = "***REMOVED***"
+    serial = TEST_SERIAL_NUMBER
     devices = js_authenticated.search_devices(serial=serial)
     assert len(devices) > 0
     with pytest.raises(Exception):
@@ -93,7 +101,7 @@ def test_search_devices_by_serial(js_authenticated):
 
 
 def test_search_devices_by_uuid(js_authenticated):
-    udid = "***REMOVED***"
+    udid = TEST_UUID
     devices = js_authenticated.search_devices(udid=udid)
     assert len(devices) > 0
     with pytest.raises(Exception):
@@ -103,12 +111,12 @@ def test_search_devices_by_uuid(js_authenticated):
 
 def test_search_devices_by_asset_tag(js_authenticated):
     # Setup
-    device_id = "***REMOVED***"
-    asset_tag = "FTL05400"
+    device_id = TEST_DEVICE_ID
+    asset_tag = TEST_ASSET_TAG
 
     # Exercise
     results = js_authenticated.search_query(query=asset_tag)
-
+    
     # Verify
     assert device_id in results
 
@@ -128,6 +136,7 @@ def test_update_device_name(js_authenticated):
     device_test_name = "fi-cart3-test"
     js_authenticated.flush_mobile_device_commands(device_id=TEST_DEVICE_ID)
     time.sleep(0.25)
+    original_device_name = js_authenticated.device(device_id=TEST_DEVICE_ID).get("name")
 
     # Exercise
     updated_device = js_authenticated.update_device_name(
@@ -141,6 +150,8 @@ def test_update_device_name(js_authenticated):
     js_authenticated.flush_mobile_device_commands(
         device_id=TEST_DEVICE_ID, status="Pending"
     )
+    js_authenticated.update_device_name(
+        device_id=TEST_DEVICE_ID, name=original_device_name)
 
 
 def test_clear_location_from_device(js_authenticated):
@@ -381,7 +392,7 @@ def test_get_buildings(js_authenticated):
 
 def test_get_building(js_authenticated):
     # Setup
-    building_name = "***REMOVED***"
+    building_name = "Fort Lauderdale Middle School"
     desired_id = "4"
 
     # Exercise
@@ -421,8 +432,8 @@ def test_get_departments(js_authenticated):
 
 def test_get_department(js_authenticated):
     # Setup
-    department_name = "***REMOVED***"
-    desired_id = "25"
+    department_name = TEST_DEPARTMENT_NAME
+    desired_id = TEST_DEPARTMENT_ID
 
     # Exercise
     department = js_authenticated.get_department(department_name)
@@ -447,7 +458,7 @@ def test_get_empty_department(js_authenticated):
 
 def test_strip_extra_location_information(js_authenticated):
     # Setup
-    building_name = "***REMOVED***"
+    building_name = "Fort Lauderdale Middle School"
     desired_id = "4"
 
     # Exercise
@@ -490,14 +501,14 @@ def test_get_sites(js_authenticated):
 
 def test_get_site(js_authenticated):
     # Setup
-    site_name = "***REMOVED***"
-    desired_id = 5
+    site_name = TEST_SITE_NAME
+    desired_id = TEST_SITE_ID
 
     # Exercise
     site = js_authenticated.get_site(site_name)
 
     # Verify
-    assert site["id"] == desired_id
+    assert str(site["id"]) == str(desired_id)
     assert site["name"] == site_name
 
     # Cleanup - none
