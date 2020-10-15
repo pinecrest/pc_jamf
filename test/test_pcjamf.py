@@ -6,7 +6,7 @@ import time
 import html
 from decouple import AutoConfig
 
-config = AutoConfig("config.txt")
+config = AutoConfig("settings.ini")
 
 TEST_USERNAME = config("TEST_USERNAME")
 TEST_PASSWORD = config("TEST_PASSWORD")
@@ -144,7 +144,7 @@ def test_update_device_name(js_authenticated):
     )
 
     # Verify
-    assert "<status>Command sent</status>" in updated_device
+    assert updated_device
 
     # Cleanup
     js_authenticated.flush_mobile_device_commands(

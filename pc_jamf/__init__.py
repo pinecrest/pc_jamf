@@ -210,10 +210,8 @@ class PCJAMF:
             html.escape(f"{CLASSIC_DEVICENAME_ENDPOINT}/{name}/id/{device_id}")
         )
         cr = self.classic_session.post(url=url, data="")
-        if cr.status_code != 201:
-            return "Unable to push device name command"
-
-        return cr.text
+        cr.raise_for_status()
+        return cr.status_code == 201
 
     def wipe_device(self, device_id):
 
