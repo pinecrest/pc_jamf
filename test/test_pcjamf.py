@@ -10,11 +10,11 @@ config = AutoConfig("config.txt")
 
 TEST_USERNAME = config("TEST_USERNAME")
 TEST_PASSWORD = config("TEST_PASSWORD")
-TEST_SERVER = config("TEST_SERVERNAME")
+TEST_SERVER = config("TEST_SERVER")
 TEST_DEVICE_ID = config("TEST_DEVICE_ID")
 TEST_ASSET_TAG = config("TEST_ASSET_TAG")
 TEST_SERIAL_NUMBER = config("TEST_SERIAL_NUMBER")
-TEST_UUID = config("TEST_UUID")
+TEST_UDID = config("TEST_UDID")
 TEST_DEPARTMENT_NAME = config("TEST_DEPARTMENT_NAME")
 TEST_DEPARTMENT_ID = config("TEST_DEPARTMENT_ID")
 TEST_BUILDING_NAME = config("TEST_BUILDING_NAME")
@@ -100,8 +100,8 @@ def test_search_devices_by_serial(js_authenticated):
         assert js_authenticated.get_devices_by_serial(serial)
 
 
-def test_search_devices_by_uuid(js_authenticated):
-    udid = TEST_UUID
+def test_search_devices_by_udid(js_authenticated):
+    udid = TEST_UDID
     devices = js_authenticated.search_devices(udid=udid)
     assert len(devices) > 0
     with pytest.raises(Exception):
