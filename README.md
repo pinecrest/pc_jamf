@@ -2,6 +2,10 @@
 
 Scripts and API Objects to interact with the JAMF server to manage iPads
 
+# JAMF Versions
+    Tested with version 10.25
+    Uses a combination of the Classic and Pro (Beta) APIs
+
 ## TODO
 
 - ~~Initial Object Creation~~
