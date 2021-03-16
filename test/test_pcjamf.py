@@ -116,7 +116,7 @@ def test_search_devices_by_asset_tag(js_authenticated):
 
     # Exercise
     results = js_authenticated.search_query(query=asset_tag)
-    
+
     # Verify
     assert device_id in results
 
@@ -151,7 +151,8 @@ def test_update_device_name(js_authenticated):
         device_id=TEST_DEVICE_ID, status="Pending"
     )
     js_authenticated.update_device_name(
-        device_id=TEST_DEVICE_ID, name=original_device_name)
+        device_id=TEST_DEVICE_ID, name=original_device_name
+    )
 
 
 def test_clear_location_from_device(js_authenticated):
@@ -316,6 +317,36 @@ def test_update_device(js_authenticated):
 
     # Verify
     assert device["assetTag"] == device_asset_tag_test
+
+    # Cleanup
+    js_authenticated.update_device(device_id, assetTag=old_device_asset_tag)
+
+
+def test_update_device_meta(js_authenticated):
+    # Setup
+    device_id = TEST_DEVICE_ID
+    test_payload = {
+        "location": {
+            "username": "sean.tibor",
+            "emailAddress": "sean.tibor@pinecrest.edu",
+            "realName": "Sean Tibor",
+            "room": None,
+            "buildingId": TEST_BUILDING_ID,
+            "departmentId": TEST_DEPARTMENT_ID,
+        },
+        "assetTag": TEST_ASSET_TAG,
+    }
+
+    # Exercise
+    assert js_authenticated.update_device(device_id, **test_payload)
+    
+    device = js_authenticated.device(device_id, detail=True)
+    print(device)
+
+    # Verify
+    assert device["location"]["buildingId"] == TEST_BUILDING_ID
+    assert device["location"]["departmentId"] == TEST_DEPARTMENT_ID
+    assert device["assetTag"] == TEST_ASSET_TAG
 
     # Cleanup
     js_authenticated.update_device(device_id, assetTag=old_device_asset_tag)

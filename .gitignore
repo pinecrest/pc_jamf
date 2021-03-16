@@ -23,3 +23,5 @@ sheets.googleapis.com-python.json
 
 settings.ini
 
+_build/
+build/

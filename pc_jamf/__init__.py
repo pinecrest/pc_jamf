@@ -281,7 +281,6 @@ class PCJAMF:
             "username": "",
         }
         self.update_device(device_id, location=location)
-        self.recalculate_smart_groups(device_id)
 
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
@@ -415,7 +414,7 @@ class PCJAMF:
         r = self.session.patch(
             self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}"), json=payload
         )
-        print(payload)
+        print(r.request.body)
         r.raise_for_status()
         return r.ok
 
