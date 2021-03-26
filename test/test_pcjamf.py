@@ -322,36 +322,6 @@ def test_update_device(js_authenticated):
     js_authenticated.update_device(device_id, assetTag=old_device_asset_tag)
 
 
-def test_update_device_meta(js_authenticated):
-    # Setup
-    device_id = TEST_DEVICE_ID
-    test_payload = {
-        "location": {
-            "username": "sean.tibor",
-            "emailAddress": "sean.tibor@pinecrest.edu",
-            "realName": "Sean Tibor",
-            "room": None,
-            "buildingId": TEST_BUILDING_ID,
-            "departmentId": TEST_DEPARTMENT_ID,
-        },
-        "assetTag": TEST_ASSET_TAG,
-    }
-
-    # Exercise
-    assert js_authenticated.update_device(device_id, **test_payload)
-    
-    device = js_authenticated.device(device_id, detail=True)
-    print(device)
-
-    # Verify
-    assert device["location"]["buildingId"] == TEST_BUILDING_ID
-    assert device["location"]["departmentId"] == TEST_DEPARTMENT_ID
-    assert device["assetTag"] == TEST_ASSET_TAG
-
-    # Cleanup
-    js_authenticated.update_device(device_id, assetTag=old_device_asset_tag)
-
-
 def test_recalculate_smart_groups(js_authenticated):
     # Setup
     device_id = TEST_DEVICE_ID
