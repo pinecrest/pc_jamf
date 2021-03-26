@@ -218,7 +218,7 @@ class PCJAMF:
         url = self._url(
             html.escape(
                 f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/"
-                "EraseDevice/id/{device_id}"
+                f"EraseDevice/id/{device_id}"
             )
         )
         cr = self.classic_session.post(url=url, data="")
