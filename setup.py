@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="pc_jamf",
-    version="0.3.3",
+    version="0.3.5",
     description="Wrapper library to connect to a JAMF Pro Server using the beta and classic API",
     url="https://github.com/pinecrest/pc_jamf",
     author="Sean Tibor",
@@ -17,7 +17,7 @@ setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Information Technology",
-        "Intended Audience :: System Administrators"
+        "Intended Audience :: System Administrators",
     ],
     packages=["pc_jamf"],
     install_requires=["requests", "python-decouple"],

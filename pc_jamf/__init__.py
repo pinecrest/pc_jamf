@@ -1,10 +1,15 @@
-import requests
-from urllib.parse import urljoin
+import html
+import logging
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Union
+from urllib.parse import urljoin
+
+import requests
 from requests.auth import HTTPBasicAuth
-import html
-import xml.etree.ElementTree as ET
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
 
 AUTH_ENDPOINT = "auth/tokens"
 MOBILE_DEVICE_ENDPOINT = "v2/mobile-devices"
@@ -68,7 +73,7 @@ class PCJAMF:
         cls.jamf_url = urljoin(server, cls.jamf_api_root)
         url = urljoin(cls.jamf_url, path)
         response = requests.get(url, verify=verify)
-        print(f"{url}: {response.status_code}")
+        logger.debug(f"{url}: {response.status_code}")
         return response.ok or response.status_code == 401
 
     def __init__(
@@ -189,7 +194,8 @@ class PCJAMF:
         """
 
         r = self.classic_session.get(
-            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}")), data=""
+            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}")),
+            data="",
         )
         r.raise_for_status()
         root = ET.fromstring(r.text)
@@ -234,9 +240,9 @@ class PCJAMF:
         )
         cr = self.classic_session.post(url=url)
         if cr.status_code != 201:
-            print(url)
-            print(cr.text)
-            print(cr.status_code)
+            logger.error(url)
+            logger.error(cr.text)
+            logger.error(cr.status_code)
             raise Exception("Unable to push device update inventory")
 
         return cr.text
@@ -284,14 +290,14 @@ class PCJAMF:
 
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
-        print(f"deleting device {device_id}")
+        logger.info(f"deleting device {device_id}")
         cr = self.classic_session.delete(url=url, data="")
         if cr.status_code == 200:
-            print(f"Device {device_id} successfully deleted.")
+            logger.info(f"Device {device_id} successfully deleted.")
             return True
         else:
-            print(url)
-            print(cr.text)
+            logger.error(url)
+            logger.error(cr.text)
             raise Exception("Unable to push device name command")
 
     def device_flattened(self, device_id):
@@ -316,9 +322,10 @@ class PCJAMF:
                 {
                     f"location_{k}_name": v["name"]
                     for k, v in extended_device_info["location"].items()
-                    if isinstance(v, dict) or isinstance(v, list)
+                    if isinstance(v, (dict, list))
                 }
             )
+
         if "ios" in extended_device_info:
             device.update(
                 {
@@ -414,7 +421,6 @@ class PCJAMF:
         r = self.session.patch(
             self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}"), json=payload
         )
-        print(r.request.body)
         r.raise_for_status()
         return r.ok
 
@@ -479,10 +485,10 @@ class PCJAMF:
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
         payload = {"serialNumbers": serials, "versionLock": version_lock}
         r = self.session.put(url=self._url(url), json=payload)
-        if not r.ok:
-            print(f"Error {r.status_code}: {r.text}")
+        if r.ok:
+            logger.info(f"Adding Prestage: {self._url(url)} with payload {payload}")
         else:
-            print(f"Adding Prestage: {self._url(url)} with payload {payload}")
+            logger.error(f"Error {r.status_code}: {r.text}")
         return r.ok
 
     def remove_device_from_prestage(
