@@ -1,12 +1,14 @@
+import asyncio
 import html
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from typing import Union
+from typing import Any, Dict, List, Union
 from urllib.parse import urljoin
 
-import requests
-from requests.auth import HTTPBasicAuth
+import httpx
+import tqdm
+from httpx import BasicAuth
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -72,7 +74,7 @@ class PCJAMF:
 
         cls.jamf_url = urljoin(server, cls.jamf_api_root)
         url = urljoin(cls.jamf_url, path)
-        response = requests.get(url, verify=verify)
+        response = httpx.get(url, verify=verify)
         logger.debug(f"{url}: {response.status_code}")
         return response.ok or response.status_code == 401
 
@@ -81,15 +83,15 @@ class PCJAMF:
     ):
         self.jamf_server = server
         self.jamf_url = urljoin(self.jamf_server, self.jamf_api_root)
-        self.session = requests.Session()
+        self.session = httpx.Client()
         self.session.verify = verify
         self.credentials = (username, password)
         self.session.headers.update({"Accept": "application/json"})
         self.token = None
         self.auth_expiration = None
-        self.classic_session = requests.Session()
+        self.classic_session = httpx.Client()
         self.classic_session.verify = verify
-        self.classic_session.auth = HTTPBasicAuth(username, password)
+        self.classic_session.auth = BasicAuth(username, password)
         self.classic_session.headers.update({"Accept": "application/xml"})
 
     def close(self):
@@ -131,7 +133,7 @@ class PCJAMF:
     def _url(self, endpoint):
         return urljoin(self.jamf_url, endpoint)
 
-    def all_devices(self) -> Union[list, dict]:
+    def all_devices(self, details: bool = False) -> Union[list, dict]:
         """Fetch all mobile devices in JAMF database
 
         Returns:
@@ -140,7 +142,11 @@ class PCJAMF:
         params = {"page-size": DEVICES_PAGE_SIZE}
         r = self.session.get(self._url(MOBILE_DEVICE_ENDPOINT), params=params)
         r.raise_for_status()
-        return r.json()
+        # Fetch details asynchronously
+        if details:
+            return self.get_all_details_async(r.json().get("results"))
+
+        return r.json().get("results")
 
     def search_devices(
         self,
@@ -547,3 +553,39 @@ class PCJAMF:
         r = self.classic_session.delete(url, headers={"accept": "application/json"})
         r.raise_for_status()
         return r.ok
+
+    async def get_all_details(self, devices: List[Dict[Any, Any]]):
+        limits = httpx.Limits(max_connections=25, max_keepalive_connections=0)
+        transport = httpx.AsyncHTTPTransport(retries=5, limits=limits)
+        client = httpx.AsyncClient(
+            headers=self.session.headers,
+            cookies=self.session.cookies,
+            transport=transport,
+        )
+        tasks = []
+        for device in devices:
+            task = asyncio.create_task(self.get_details_async(client, device))
+            tasks.append(task)
+
+        results = [
+            await f for f in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks))
+        ]
+
+        await client.aclose()
+        return results
+
+    async def get_details_async(self, client, device: Dict[Any, Any]):
+        device_id = device.get("id")
+        if not device_id:
+            raise ValueError("Invalid Device record provided.")
+        url = self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}/detail")
+        r = await client.get(url)
+        if r.status_code != 200:
+            logger.info(
+                f"Received status code {r.status_code} for device {device['id']}"
+            )
+        return r.json()
+
+    def get_all_details_async(self, devices):
+        results = asyncio.run(self.get_all_details(devices))
+        return results
