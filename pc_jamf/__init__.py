@@ -17,6 +17,7 @@ AUTH_ENDPOINT = "auth/tokens"
 MOBILE_DEVICE_ENDPOINT = "v2/mobile-devices"
 MOBILE_DEVICE_PRESTAGE_ENDPOINT = "v2/mobile-device-prestages"
 SEARCH_DEVICE_ENDPOINT = "v1/search-mobile-devices"
+COMMANDS_ENDPOINT = "preview/mdm/commands"
 
 VALIDATION_ENDPOINT = "auth/current"
 INVALIDATE_ENDPOINT = "auth/invalidateToken"
@@ -216,14 +217,29 @@ class PCJAMF:
         if r.status_code == 200:
             return r.json()
 
-    def update_device_name(self, device_id, name):
+    def update_device_name(self, device_id: Union[int, str], name: str) -> bool:
 
-        url = self._url(
-            html.escape(f"{CLASSIC_DEVICENAME_ENDPOINT}/{name}/id/{device_id}")
-        )
-        cr = self.classic_session.post(url=url, data="")
-        cr.raise_for_status()
-        return cr.status_code == 201
+        management_id = self.fetch_management_id(device_id)
+
+        command_data = {
+            "commandType": "SETTINGS",
+            "deviceName": name,
+        }
+        return self._send_command(management_id, command_data)
+
+    def _send_command(
+        self, management_id: str, command_data, device_type="MOBILE_DEVICE"
+    ):
+        url = self._url(html.escape(COMMANDS_ENDPOINT))
+        payload = {
+            "clientData": [{"managementId": management_id, "clientType": device_type}],
+            "commandData": command_data,
+        }
+        r = self.session.post(url=url, json=payload)
+        if r.status_code == 400:
+            print(r.text)
+        r.raise_for_status()
+        return r.status_code < 400
 
     def wipe_device(self, device_id):
 
@@ -428,7 +444,7 @@ class PCJAMF:
             self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}"), json=payload
         )
         r.raise_for_status()
-        return r.ok
+        return r.status_code < 400
 
     def set_device_room(self, device_id: int, room_name: str) -> dict:
         """
@@ -535,10 +551,19 @@ class PCJAMF:
     def get_object_by_name(self, object_list, name) -> dict:
         return next((item for item in object_list if item["name"] == name), None)
 
-    def flush_mobile_device_commands(self, device_id, status=None):
+    def fetch_management_id(self, device_id: Union[int, str]) -> str:
+        """Given a device id, return the management id for mdm command creation
 
-        if not status:
-            status = "Pending+Failed"
+        Args:
+            device_id (Union[int, str]): A JAMF ID for a mobile device
+
+        Returns:
+            str: management id for MDM
+        """
+        device = self.device(device_id, detail=True)
+        return device.get("managementId")
+
+    def flush_mobile_device_commands(self, device_id, status="Pending+Failed"):
 
         if status not in ("Pending", "Failed", "Pending+Failed"):
             raise ValueError(f"Invalid Status: {status}")
@@ -552,7 +577,7 @@ class PCJAMF:
 
         r = self.classic_session.delete(url, headers={"accept": "application/json"})
         r.raise_for_status()
-        return r.ok
+        return r.status_code < 400
 
     async def get_all_details(self, devices: List[Dict[Any, Any]]):
         limits = httpx.Limits(max_connections=25, max_keepalive_connections=0)
