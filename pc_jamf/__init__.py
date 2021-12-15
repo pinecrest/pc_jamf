@@ -96,6 +96,7 @@ class PCJAMF:
         self.classic_session.headers.update({"Accept": "application/xml"})
 
     def close(self):
+        """closes the connection to the JAMF server"""
         if self.authenticated:
             self.invalidate()
             self.session.close()
@@ -132,6 +133,14 @@ class PCJAMF:
         return self.token and self.auth_expiration > datetime.now()
 
     def _url(self, endpoint):
+        """Helper function to create urls for the JAMF server
+
+        Args:
+            endpoint (str): endpoint for the request
+
+        Returns:
+            str: fully-formed url including server name and protocol
+        """
         return urljoin(self.jamf_url, endpoint)
 
     def all_devices(self, details: bool = False) -> Union[list, dict]:
@@ -148,44 +157,6 @@ class PCJAMF:
             return self.get_all_details_async(r.json().get("results"))
 
         return r.json().get("results")
-
-    def search_devices(
-        self,
-        *,
-        serial: str = None,
-        name: str = None,
-        udid: str = None,
-        asset_tag: str = None,
-    ):
-        """[summary]
-        Args:
-            serial (str, optional): [description]. Defaults to None.
-            name (str, optional): [description]. Defaults to None.
-            udid (str, optional): [description]. Defaults to None.
-            asset_tag (str, optional): [description]. Defaults to None.
-        Raises:
-            Exception: [description]
-        Returns:
-            [type]: [description]
-        """
-        search_params = {"pageNumber": 0, "pageSize": 100}
-        if not any((serial, name, udid, asset_tag)):
-            raise Exception("You must provide at least one search term")
-
-        if name:
-            search_params["name"] = name
-        if serial:
-            search_params["serialNumber"] = serial
-        if udid:
-            search_params["udid"] = udid
-        if asset_tag:
-            search_params["assetTag"] = asset_tag
-
-        r = self.session.post(url=self._url(SEARCH_DEVICE_ENDPOINT), json=search_params)
-        r.raise_for_status()
-        payload = r.json()
-
-        return payload.get("results", [])
 
     def search_query(self, query: str):
         """Search JAMF using the classic API for matches
@@ -210,6 +181,15 @@ class PCJAMF:
         return [device_id.text for device_id in device_ids]
 
     def device(self, device_id, detail=False):
+        """Get information about a single device
+
+        Args:
+            device_id (str): the JAMF device id, e.g. '2817'
+            detail (bool, optional): Get full device record. Defaults to False.
+
+        Returns:
+            dict: a complex dictionary structure containing information about a single device
+        """
         url = self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}")
         if detail:
             url += "/detail"
@@ -217,7 +197,9 @@ class PCJAMF:
         if r.status_code == 200:
             return r.json()
 
-    def update_device_name(self, device_id: Union[int, str], name: str) -> bool:
+    def update_device_name(
+        self, device_id: Union[int, str], name: str, enforce: bool = True
+    ) -> bool:
 
         management_id = self.fetch_management_id(device_id)
 
@@ -225,7 +207,12 @@ class PCJAMF:
             "commandType": "SETTINGS",
             "deviceName": name,
         }
+        if enforce:
+            self.enforce_device_name(device_id)
         return self._send_command(management_id, command_data)
+
+    def enforce_device_name(self, device_id: Union[int, str]) -> bool:
+        return self.update_device(device_id, enforceName=True)
 
     def _send_command(
         self, management_id: str, command_data, device_type="MOBILE_DEVICE"
