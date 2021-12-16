@@ -1,8 +1,14 @@
+# read the contents of your README file
+from pathlib import Path
+
 from setuptools import setup
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="pc_jamf",
-    version="0.4.0",
+    version="0.4.1",
     description="Wrapper library to connect to a JAMF Pro Server using the beta and classic API",
     url="https://github.com/pinecrest/pc_jamf",
     author="Sean Tibor",
@@ -22,4 +28,6 @@ setup(
     packages=["pc_jamf"],
     install_requires=["requests", "python-decouple"],
     zip_safe=False,
+    long_description=long_description,
+    long_description_content_type="text/markdown",
 )
