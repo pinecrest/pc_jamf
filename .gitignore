@@ -22,3 +22,6 @@ sheets.googleapis.com-python.json
 .python-version
 
 settings.ini
+
+_build/
+build/

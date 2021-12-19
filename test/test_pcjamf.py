@@ -1,10 +1,11 @@
-from pc_jamf import PCJAMF, CLASSIC_ENDPOINT
-import pytest
 import datetime
-from pprint import pprint
-import time
 import html
+import time
+from pprint import pprint
+
+import pytest
 from decouple import AutoConfig
+from pc_jamf import CLASSIC_ENDPOINT, PCJAMF
 
 config = AutoConfig("settings.ini")
 
@@ -29,14 +30,14 @@ def test_available():
 
 @pytest.fixture(scope="session")
 def jamf_session():
-    if PCJAMF.available(server=TEST_SERVER):
-        jamf = PCJAMF(TEST_USERNAME, TEST_PASSWORD, server=TEST_SERVER)
-        yield jamf
-        jamf.close()
-    else:
+    if not PCJAMF.available(server=TEST_SERVER):
         raise Exception(
             "PC JAMF Server not available. Check your connection and try again."
         )
+
+    jamf = PCJAMF(TEST_USERNAME, TEST_PASSWORD, server=TEST_SERVER)
+    yield jamf
+    jamf.close()
 
 
 @pytest.fixture(scope="session")

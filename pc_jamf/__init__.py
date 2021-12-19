@@ -1,15 +1,23 @@
-import requests
-from urllib.parse import urljoin
-from datetime import datetime
-from typing import Union
-from requests.auth import HTTPBasicAuth
+import asyncio
 import html
+import logging
 import xml.etree.ElementTree as ET
+from datetime import datetime
+from typing import Any, Dict, List, Union
+from urllib.parse import urljoin
+
+import httpx
+import tqdm
+from httpx import BasicAuth
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
 
 AUTH_ENDPOINT = "auth/tokens"
 MOBILE_DEVICE_ENDPOINT = "v2/mobile-devices"
 MOBILE_DEVICE_PRESTAGE_ENDPOINT = "v2/mobile-device-prestages"
 SEARCH_DEVICE_ENDPOINT = "v1/search-mobile-devices"
+COMMANDS_ENDPOINT = "preview/mdm/commands"
 
 VALIDATION_ENDPOINT = "auth/current"
 INVALIDATE_ENDPOINT = "auth/invalidateToken"
@@ -67,8 +75,8 @@ class PCJAMF:
 
         cls.jamf_url = urljoin(server, cls.jamf_api_root)
         url = urljoin(cls.jamf_url, path)
-        response = requests.get(url, verify=verify)
-        print(f"{url}: {response.status_code}")
+        response = httpx.get(url, verify=verify)
+        logger.debug(f"{url}: {response.status_code}")
         return response.ok or response.status_code == 401
 
     def __init__(
@@ -76,18 +84,19 @@ class PCJAMF:
     ):
         self.jamf_server = server
         self.jamf_url = urljoin(self.jamf_server, self.jamf_api_root)
-        self.session = requests.Session()
+        self.session = httpx.Client()
         self.session.verify = verify
         self.credentials = (username, password)
         self.session.headers.update({"Accept": "application/json"})
         self.token = None
         self.auth_expiration = None
-        self.classic_session = requests.Session()
+        self.classic_session = httpx.Client()
         self.classic_session.verify = verify
-        self.classic_session.auth = HTTPBasicAuth(username, password)
+        self.classic_session.auth = BasicAuth(username, password)
         self.classic_session.headers.update({"Accept": "application/xml"})
 
     def close(self):
+        """closes the connection to the JAMF server"""
         if self.authenticated:
             self.invalidate()
             self.session.close()
@@ -124,9 +133,17 @@ class PCJAMF:
         return self.token and self.auth_expiration > datetime.now()
 
     def _url(self, endpoint):
+        """Helper function to create urls for the JAMF server
+
+        Args:
+            endpoint (str): endpoint for the request
+
+        Returns:
+            str: fully-formed url including server name and protocol
+        """
         return urljoin(self.jamf_url, endpoint)
 
-    def all_devices(self) -> Union[list, dict]:
+    def all_devices(self, details: bool = False) -> Union[list, dict]:
         """Fetch all mobile devices in JAMF database
 
         Returns:
@@ -135,45 +152,11 @@ class PCJAMF:
         params = {"page-size": DEVICES_PAGE_SIZE}
         r = self.session.get(self._url(MOBILE_DEVICE_ENDPOINT), params=params)
         r.raise_for_status()
-        return r.json()
+        # Fetch details asynchronously
+        if details:
+            return self.get_all_details_async(r.json().get("results"))
 
-    def search_devices(
-        self,
-        *,
-        serial: str = None,
-        name: str = None,
-        udid: str = None,
-        asset_tag: str = None,
-    ):
-        """[summary]
-        Args:
-            serial (str, optional): [description]. Defaults to None.
-            name (str, optional): [description]. Defaults to None.
-            udid (str, optional): [description]. Defaults to None.
-            asset_tag (str, optional): [description]. Defaults to None.
-        Raises:
-            Exception: [description]
-        Returns:
-            [type]: [description]
-        """
-        search_params = {"pageNumber": 0, "pageSize": 100}
-        if not any((serial, name, udid, asset_tag)):
-            raise Exception("You must provide at least one search term")
-
-        if name:
-            search_params["name"] = name
-        if serial:
-            search_params["serialNumber"] = serial
-        if udid:
-            search_params["udid"] = udid
-        if asset_tag:
-            search_params["assetTag"] = asset_tag
-
-        r = self.session.post(url=self._url(SEARCH_DEVICE_ENDPOINT), json=search_params)
-        r.raise_for_status()
-        payload = r.json()
-
-        return payload.get("results", [])
+        return r.json().get("results")
 
     def search_query(self, query: str):
         """Search JAMF using the classic API for matches
@@ -198,6 +181,15 @@ class PCJAMF:
         return [device_id.text for device_id in device_ids]
 
     def device(self, device_id, detail=False):
+        """Get information about a single device
+
+        Args:
+            device_id (str): the JAMF device id, e.g. '2817'
+            detail (bool, optional): Get full device record. Defaults to False.
+
+        Returns:
+            dict: a complex dictionary structure containing information about a single device
+        """
         url = self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}")
         if detail:
             url += "/detail"
@@ -205,21 +197,43 @@ class PCJAMF:
         if r.status_code == 200:
             return r.json()
 
-    def update_device_name(self, device_id, name):
+    def update_device_name(
+        self, device_id: Union[int, str], name: str, enforce: bool = True
+    ) -> bool:
 
-        url = self._url(
-            html.escape(f"{CLASSIC_DEVICENAME_ENDPOINT}/{name}/id/{device_id}")
-        )
-        cr = self.classic_session.post(url=url, data="")
-        cr.raise_for_status()
-        return cr.status_code == 201
+        management_id = self.fetch_management_id(device_id)
+
+        command_data = {
+            "commandType": "SETTINGS",
+            "deviceName": name,
+        }
+        if enforce:
+            self.enforce_device_name(device_id)
+        return self._send_command(management_id, command_data)
+
+    def enforce_device_name(self, device_id: Union[int, str]) -> bool:
+        return self.update_device(device_id, enforceName=True)
+
+    def _send_command(
+        self, management_id: str, command_data, device_type="MOBILE_DEVICE"
+    ):
+        url = self._url(html.escape(COMMANDS_ENDPOINT))
+        payload = {
+            "clientData": [{"managementId": management_id, "clientType": device_type}],
+            "commandData": command_data,
+        }
+        r = self.session.post(url=url, json=payload)
+        if r.status_code == 400:
+            print(r.text)
+        r.raise_for_status()
+        return r.status_code < 400
 
     def wipe_device(self, device_id):
 
         url = self._url(
             html.escape(
                 f"{CLASSIC_ENDPOINT}/mobiledevicecommands/command/"
-                "EraseDevice/id/{device_id}"
+                f"EraseDevice/id/{device_id}"
             )
         )
         cr = self.classic_session.post(url=url, data="")
@@ -235,9 +249,9 @@ class PCJAMF:
         )
         cr = self.classic_session.post(url=url)
         if cr.status_code != 201:
-            print(url)
-            print(cr.text)
-            print(cr.status_code)
+            logger.error(url)
+            logger.error(cr.text)
+            logger.error(cr.status_code)
             raise Exception("Unable to push device update inventory")
 
         return cr.text
@@ -282,18 +296,17 @@ class PCJAMF:
             "username": "",
         }
         self.update_device(device_id, location=location)
-        self.recalculate_smart_groups(device_id)
 
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
-        print(f"deleting device {device_id}")
+        logger.info(f"deleting device {device_id}")
         cr = self.classic_session.delete(url=url, data="")
         if cr.status_code == 200:
-            print(f"Device {device_id} successfully deleted.")
+            logger.info(f"Device {device_id} successfully deleted.")
             return True
         else:
-            print(url)
-            print(cr.text)
+            logger.error(url)
+            logger.error(cr.text)
             raise Exception("Unable to push device name command")
 
     def device_flattened(self, device_id):
@@ -318,9 +331,10 @@ class PCJAMF:
                 {
                     f"location_{k}_name": v["name"]
                     for k, v in extended_device_info["location"].items()
-                    if isinstance(v, dict) or isinstance(v, list)
+                    if isinstance(v, (dict, list))
                 }
             )
+
         if "ios" in extended_device_info:
             device.update(
                 {
@@ -416,9 +430,8 @@ class PCJAMF:
         r = self.session.patch(
             self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}"), json=payload
         )
-        print(payload)
         r.raise_for_status()
-        return r.ok
+        return r.status_code < 400
 
     def set_device_room(self, device_id: int, room_name: str) -> dict:
         """
@@ -481,10 +494,10 @@ class PCJAMF:
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
         payload = {"serialNumbers": serials, "versionLock": version_lock}
         r = self.session.put(url=self._url(url), json=payload)
-        if not r.ok:
-            print(f"Error {r.status_code}: {r.text}")
+        if r.ok:
+            logger.info(f"Adding Prestage: {self._url(url)} with payload {payload}")
         else:
-            print(f"Adding Prestage: {self._url(url)} with payload {payload}")
+            logger.error(f"Error {r.status_code}: {r.text}")
         return r.ok
 
     def remove_device_from_prestage(
@@ -525,10 +538,19 @@ class PCJAMF:
     def get_object_by_name(self, object_list, name) -> dict:
         return next((item for item in object_list if item["name"] == name), None)
 
-    def flush_mobile_device_commands(self, device_id, status=None):
+    def fetch_management_id(self, device_id: Union[int, str]) -> str:
+        """Given a device id, return the management id for mdm command creation
 
-        if not status:
-            status = "Pending+Failed"
+        Args:
+            device_id (Union[int, str]): A JAMF ID for a mobile device
+
+        Returns:
+            str: management id for MDM
+        """
+        device = self.device(device_id, detail=True)
+        return device.get("managementId")
+
+    def flush_mobile_device_commands(self, device_id, status="Pending+Failed"):
 
         if status not in ("Pending", "Failed", "Pending+Failed"):
             raise ValueError(f"Invalid Status: {status}")
@@ -542,4 +564,40 @@ class PCJAMF:
 
         r = self.classic_session.delete(url, headers={"accept": "application/json"})
         r.raise_for_status()
-        return r.ok
+        return r.status_code < 400
+
+    async def get_all_details(self, devices: List[Dict[Any, Any]]):
+        limits = httpx.Limits(max_connections=25, max_keepalive_connections=0)
+        transport = httpx.AsyncHTTPTransport(retries=5, limits=limits)
+        client = httpx.AsyncClient(
+            headers=self.session.headers,
+            cookies=self.session.cookies,
+            transport=transport,
+        )
+        tasks = []
+        for device in devices:
+            task = asyncio.create_task(self.get_details_async(client, device))
+            tasks.append(task)
+
+        results = [
+            await f for f in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks))
+        ]
+
+        await client.aclose()
+        return results
+
+    async def get_details_async(self, client, device: Dict[Any, Any]):
+        device_id = device.get("id")
+        if not device_id:
+            raise ValueError("Invalid Device record provided.")
+        url = self._url(f"{MOBILE_DEVICE_ENDPOINT}/{device_id}/detail")
+        r = await client.get(url)
+        if r.status_code != 200:
+            logger.info(
+                f"Received status code {r.status_code} for device {device['id']}"
+            )
+        return r.json()
+
+    def get_all_details_async(self, devices):
+        results = asyncio.run(self.get_all_details(devices))
+        return results
