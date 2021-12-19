@@ -1,10 +1,11 @@
-import requests
-from urllib.parse import urljoin
-from datetime import datetime
-from typing import Union
-from requests.auth import HTTPBasicAuth
 import html
 import xml.etree.ElementTree as ET
+from datetime import datetime
+from typing import Union
+from urllib.parse import urljoin
+
+import requests
+from requests.auth import HTTPBasicAuth
 
 AUTH_ENDPOINT = "auth/tokens"
 MOBILE_DEVICE_ENDPOINT = "v2/mobile-devices"
@@ -189,7 +190,8 @@ class PCJAMF:
         """
 
         r = self.classic_session.get(
-            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}")), data=""
+            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}")),
+            data="",
         )
         r.raise_for_status()
         root = ET.fromstring(r.text)
