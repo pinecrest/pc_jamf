@@ -17,7 +17,7 @@ setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Information Technology",
-        "Intended Audience :: System Administrators"
+        "Intended Audience :: System Administrators",
     ],
     packages=["pc_jamf"],
     install_requires=["requests", "python-decouple"],

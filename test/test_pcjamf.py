@@ -116,7 +116,7 @@ def test_search_devices_by_asset_tag(js_authenticated):
 
     # Exercise
     results = js_authenticated.search_query(query=asset_tag)
-    
+
     # Verify
     assert device_id in results
 
@@ -151,7 +151,8 @@ def test_update_device_name(js_authenticated):
         device_id=TEST_DEVICE_ID, status="Pending"
     )
     js_authenticated.update_device_name(
-        device_id=TEST_DEVICE_ID, name=original_device_name)
+        device_id=TEST_DEVICE_ID, name=original_device_name
+    )
 
 
 def test_clear_location_from_device(js_authenticated):

@@ -189,7 +189,8 @@ class PCJAMF:
         """
 
         r = self.classic_session.get(
-            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}")), data=""
+            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}")),
+            data="",
         )
         r.raise_for_status()
         root = ET.fromstring(r.text)
