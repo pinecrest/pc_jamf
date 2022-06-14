@@ -84,14 +84,12 @@ class PCJAMF:
     ):
         self.jamf_server = server
         self.jamf_url = urljoin(self.jamf_server, self.jamf_api_root)
-        self.session = httpx.Client()
-        self.session.verify = verify
+        self.session = httpx.Client(verify=verify)
         self.credentials = (username, password)
         self.session.headers.update({"Accept": "application/json"})
         self.token = None
         self.auth_expiration = None
-        self.classic_session = httpx.Client()
-        self.classic_session.verify = verify
+        self.classic_session = httpx.Client(verify=verify)
         self.classic_session.auth = BasicAuth(username, password)
         self.classic_session.headers.update({"Accept": "application/xml"})
 
