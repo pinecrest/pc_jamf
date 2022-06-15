@@ -18,11 +18,11 @@
 # -- Project information -----------------------------------------------------
 
 project = "PC JAMF"
-copyright = "2020, Sean Tibor"
+copyright = "2022, Pine Crest School"
 author = "Sean Tibor"
 
 # The full version, including alpha/beta/rc tags
-release = "0.4.5"
+release = "0.4.6"
 
 
 # -- General configuration ---------------------------------------------------
