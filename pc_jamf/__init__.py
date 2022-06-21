@@ -170,8 +170,7 @@ class PCJAMF:
         """
 
         r = self.classic_session.get(
-            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}")),
-            data="",
+            url=self._url(html.escape(f"{CLASSIC_SEARCH_DEVICE_ENDPOINT}/{query}"))
         )
         r.raise_for_status()
         root = ET.fromstring(r.text)
@@ -234,7 +233,7 @@ class PCJAMF:
                 f"EraseDevice/id/{device_id}"
             )
         )
-        cr = self.classic_session.post(url=url, data="")
+        cr = self.classic_session.post(url=url)
         if cr.status_code != 201:
             return "Unable to wipe device"
 
@@ -298,7 +297,7 @@ class PCJAMF:
     def delete_device(self, device_id):
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
         logger.info(f"deleting device {device_id}")
-        cr = self.classic_session.delete(url=url, data="")
+        cr = self.classic_session.delete(url=url)
         if cr.status_code < 400:
             logger.info(f"Device {device_id} successfully deleted.")
             return True
