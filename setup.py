@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="pc_jamf",
-    version="0.4.6",
+    version="0.4.7",
     description="Wrapper library to connect to a JAMF Pro Server using the beta and classic API",
     url="https://github.com/pinecrest/pc_jamf",
     author="Sean Tibor",

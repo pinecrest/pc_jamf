@@ -192,7 +192,7 @@ class PCJAMF:
         if detail:
             url += "/detail"
         r = self.session.get(url)
-        if r.status_code == 200:
+        if r.status_code < 400:
             return r.json()
 
     def update_device_name(
@@ -299,7 +299,7 @@ class PCJAMF:
         url = self._url(html.escape(f"{CLASSIC_ENDPOINT}/mobiledevices/id/{device_id}"))
         logger.info(f"deleting device {device_id}")
         cr = self.classic_session.delete(url=url, data="")
-        if cr.status_code == 200:
+        if cr.status_code < 400:
             logger.info(f"Device {device_id} successfully deleted.")
             return True
         else:
@@ -354,17 +354,17 @@ class PCJAMF:
 
     def validate(self):
         r = self.session.post(self._url(VALIDATION_ENDPOINT))
-        return r.status_code == 200
+        return r.status_code < 400
 
     def invalidate(self):
         if not self.authenticated:
             return True
         r = self.session.post(self._url(INVALIDATE_ENDPOINT))
-        if r.ok:
+        if r.status_code < 400:
             del self.session.headers["Accept"]
             del self.token
             del self.auth_expiration
-        return bool(r.ok)
+        return r.status_code < 400
 
     def change_device_configuration_profile_exclusion(
         self, device_id: int, configuration_profile_id: int, exclude_device: bool = True
@@ -492,11 +492,11 @@ class PCJAMF:
         url = f"{MOBILE_DEVICE_PRESTAGE_ENDPOINT}/{prestage_id}/scope"
         payload = {"serialNumbers": serials, "versionLock": version_lock}
         r = self.session.put(url=self._url(url), json=payload)
-        if r.ok:
+        if r.status_code < 400:
             logger.info(f"Adding Prestage: {self._url(url)} with payload {payload}")
         else:
             logger.error(f"Error {r.status_code}: {r.text}")
-        return r.ok
+        return r.status_code < 400
 
     def remove_device_from_prestage(
         self, device_id: int = None, serial_number: str = None
