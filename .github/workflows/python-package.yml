@@ -1,6 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
+# classic software‑supply‑chain risk: 
+#every run pulls fresh packages from PyPI, so a typosquat or compromised dependency can silently land in CI and execute during tests.
 name: Python package
 
 on:
